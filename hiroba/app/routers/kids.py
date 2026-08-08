@@ -9,6 +9,14 @@
 
 音声はオプションで Whisper により文字化され Post.whisper_text に保存される
 （保護者確認用。キッズ自身には表示しない想定）。
+
+投稿の削除について（「理由を表示せず静かに消す」プライバシー設計）:
+- 削除を実行できるのは、投稿した本人（キッズ）またはそのキッズの保護者のみ。
+- 削除は実際のDeleteではなく Post.is_hidden = True を立てるだけの
+  論理削除とし、タイムライン等の一覧クエリから静かに除外する。
+  「削除されました」等のメッセージは一切表示しない。
+- 権限のないユーザーからのアクセスには、投稿の存在自体を明かさないため
+  404を返す（403にはしない）。
 """
 
 import base64
@@ -83,12 +91,26 @@ def _save_base64_image(data_url: str, prefix: str) -> tuple[str, Path]:
     return f"/static/uploads/{filename}", dest_path
 
 
-def _serialize_post(post: Post) -> dict:
-    """タイムライン表示用に投稿をシリアライズする（4種のリアクション数を含む）"""
+def _serialize_post(post: Post, viewer: User | None = None) -> dict:
+    """タイムライン表示用に投稿をシリアライズする（4種のリアクション数を含む）
+
+    - can_delete : 閲覧者が「けす」ボタンを操作できるか（本人 or その保護者）
+    """
     reaction_counts = {rt: 0 for rt in REACTION_LABELS}
     for r in post.reactions:
         if r.reaction_type in reaction_counts:
             reaction_counts[r.reaction_type] += 1
+
+    can_delete = False
+    if viewer is not None:
+        if post.user_id == viewer.id:
+            can_delete = True
+        elif (
+            viewer.role == "parent"
+            and post.user is not None
+            and post.user.parent_id == viewer.id
+        ):
+            can_delete = True
 
     return {
         "id": post.id,
@@ -102,6 +124,7 @@ def _serialize_post(post: Post) -> dict:
         "created_at": post.created_at.strftime("%Y-%m-%d %H:%M"),
         "reactions": reaction_counts,
         "reaction_total": sum(reaction_counts.values()),
+        "can_delete": can_delete,
     }
 
 
@@ -168,7 +191,7 @@ async def create_post(
     db.commit()
     db.refresh(post)
 
-    return JSONResponse({"success": True, "post": _serialize_post(post)})
+    return JSONResponse({"success": True, "post": _serialize_post(post, active_user)})
 
 
 @router.get("/timeline")
@@ -177,17 +200,68 @@ async def get_timeline(
     user: User | None = Depends(get_active_user),
     db: Session = Depends(get_db),
 ):
-    """みんなのひろば（タイムライン）を新着順に取得する"""
-    _require_active_user(user)
+    """みんなのひろば（タイムライン）を新着順に取得する
+
+    削除済み（is_hidden=True）の投稿は、理由を出さず静かに除外する
+    （第三者には「もともとなかった」ように見える）。
+    """
+    active_user = _require_active_user(user)
 
     posts = (
         db.query(Post)
         .options(joinedload(Post.user), joinedload(Post.reactions))
+        .filter(Post.is_hidden == False)  # noqa: E712
         .order_by(Post.created_at.desc())
         .limit(limit)
         .all()
     )
 
     return JSONResponse(
-        {"success": True, "posts": [_serialize_post(p) for p in posts]}
+        {
+            "success": True,
+            "posts": [_serialize_post(p, active_user) for p in posts],
+        }
     )
+
+
+# ------------------------------------------------------------------
+# 投稿の削除（本人キッズ、またはその保護者のみ実行可能）
+# ------------------------------------------------------------------
+@router.post("/{post_id}/delete")
+async def delete_post(
+    post_id: int,
+    user: User | None = Depends(get_active_user),
+    db: Session = Depends(get_db),
+):
+    """投稿を削除する（静かに非表示にするだけで、理由は一切表示しない）
+
+    - 実行できるのは投稿した本人（キッズ）、またはそのキッズの保護者のみ。
+    - それ以外のユーザーからは、投稿の存在自体を明かさないため404を返す。
+    - 実際にDeleteはせず is_hidden=True にするのみ（タイムライン等から
+      静かに消えるだけで、「削除されました」等の表示は一切行わない）。
+    """
+    active_user = _require_active_user(user)
+
+    post = (
+        db.query(Post)
+        .options(joinedload(Post.user))
+        .filter(Post.id == post_id, Post.is_hidden == False)  # noqa: E712
+        .first()
+    )
+    if post is None:
+        raise HTTPException(status_code=404, detail="投稿が見つかりません")
+
+    is_owner = post.user_id == active_user.id
+    is_parent_of_owner = (
+        active_user.role == "parent"
+        and post.user is not None
+        and post.user.parent_id == active_user.id
+    )
+    if not (is_owner or is_parent_of_owner):
+        # 権限がない場合も存在自体を明かさない（404で統一。403は使わない）
+        raise HTTPException(status_code=404, detail="投稿が見つかりません")
+
+    post.is_hidden = True
+    db.commit()
+
+    return JSONResponse({"success": True})

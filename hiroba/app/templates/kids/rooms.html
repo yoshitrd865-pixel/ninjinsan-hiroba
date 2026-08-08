@@ -44,6 +44,21 @@
     <button type="button" id="invite-close-btn" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">とじる</button>
   </div>
 </div>
+
+<!-- おへや解散（たたむ）確認モーダル：誤操作防止のポップアップ確認 -->
+<div id="disband-room-modal" class="hiroba-modal-overlay" style="display:none;">
+  <div class="hiroba-modal">
+    <div style="text-align:center; font-size:44px;">📦</div>
+    <div style="text-align:center; font-size:20px; font-weight:700;">このおへやを たたむ？</div>
+    <p style="color:var(--hiroba-text-soft); text-align:center; margin:0;">
+      たたむと、みんなの がめんから おへやが きえるよ。<br>もとには もどせないから きをつけてね！
+    </p>
+    <button type="button" id="disband-room-confirm-btn" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">
+      <span class="hiroba-btn-icon">📦</span> たたむ
+    </button>
+    <button type="button" id="disband-room-cancel-btn" class="hiroba-btn hiroba-btn--green">やめる</button>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -52,6 +67,7 @@
   var ROOM_ICONS = ["🏠", "🏡", "🎮", "🎨", "⚽", "🐶", "🐱", "🌈", "⭐", "🍀", "🎈", "🍭"];
   var selectedIcon = ROOM_ICONS[0];
   var currentInviteRoomId = null;
+  var currentDisbandRoomId = null;
 
   /* -------------------- おさそい一覧 -------------------- */
   async function loadInvitations() {
@@ -134,6 +150,11 @@
           openInviteModal(parseInt(btn.getAttribute("data-invite-room-id"), 10));
         });
       });
+      list.querySelectorAll("[data-disband-room-id]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          openDisbandModal(parseInt(btn.getAttribute("data-disband-room-id"), 10));
+        });
+      });
     } catch (e) {
       if (e.status === 401) {
         window.location.href = "/login";
@@ -144,11 +165,18 @@
   }
 
   function renderRoomCard(room) {
+    // 作成者本人（またはその保護者）だけに「たたむ」ボタンを表示する（第三者には見えない）
+    var disbandBtnHtml = "";
+    if (room.can_disband) {
+      disbandBtnHtml =
+        '<button type="button" class="hiroba-tool-btn hiroba-tool-btn--danger" data-disband-room-id="' + room.id + '" aria-label="おへやをたたむ">📦</button>';
+    }
     return (
-      '<div class="hiroba-card hiroba-fade-in" style="padding:18px; margin-bottom:14px; display:flex; align-items:center; gap:14px;">' +
+      '<div class="hiroba-card hiroba-fade-in" data-room-id="' + room.id + '" style="padding:18px; margin-bottom:14px; display:flex; align-items:center; gap:14px;">' +
       '  <div class="hiroba-post-avatar" style="width:64px; height:64px; font-size:34px;">' + (room.icon || "🏠") + '</div>' +
       '  <div style="flex:1; font-size:20px; font-weight:800;">' + Hiroba.escapeHtml(room.name) + '</div>' +
       '  <button type="button" class="hiroba-tool-btn" data-invite-room-id="' + room.id + '">💌 しょうたい</button>' +
+      '  ' + disbandBtnHtml +
       '</div>'
     );
   }
@@ -255,6 +283,40 @@
 
   document.getElementById("invite-close-btn").addEventListener("click", function () {
     inviteModal.style.display = "none";
+  });
+
+  /* -------------------- おへやをたたむ（解散） -------------------- */
+  var disbandModal = document.getElementById("disband-room-modal");
+
+  function openDisbandModal(roomId) {
+    currentDisbandRoomId = roomId;
+    disbandModal.style.display = "flex";
+  }
+
+  document.getElementById("disband-room-cancel-btn").addEventListener("click", function () {
+    currentDisbandRoomId = null;
+    disbandModal.style.display = "none";
+  });
+
+  document.getElementById("disband-room-confirm-btn").addEventListener("click", async function () {
+    if (currentDisbandRoomId === null) return;
+    var btn = this;
+    btn.disabled = true;
+    try {
+      await Hiroba.api("/api/rooms/" + currentDisbandRoomId + "/disband", { method: "POST" });
+      disbandModal.style.display = "none";
+      // 静かにリストから消す（「解散されました」等のメッセージは一切表示しない）
+      var card = document.querySelector('[data-room-id="' + currentDisbandRoomId + '"]');
+      if (card) card.remove();
+      currentDisbandRoomId = null;
+      loadRooms();
+    } catch (e) {
+      // 失敗しても理由は表示せず、モーダルをそっと閉じるだけにする
+      disbandModal.style.display = "none";
+      currentDisbandRoomId = null;
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   buildIconGrid();

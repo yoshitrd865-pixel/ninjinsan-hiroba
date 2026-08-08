@@ -19,6 +19,17 @@
 - POST /api/rooms/invitations/{membership_id}/parent-approve: 保護者の承認
 - GET  /api/rooms/parent/pending-approvals           : 保護者向け：承認待ち一覧
 - GET  /api/rooms/{room_id}                          : おへや詳細（正式メンバーのみ）
+- POST /api/rooms/{room_id}/disband                  : おへやを たたむ（解散）
+
+おへや解散（「理由を表示せず静かに消す」プライバシー設計）:
+- 実行できるのは、おへやの作成者本人（キッズ）、またはその保護者のみ。
+- 解散処理は Room.is_active = False にするだけの論理削除とし、
+  実データ（Room / RoomMember）はDeleteしない。
+- 解散後は my-rooms / 詳細取得 など、既存の「is_active フィルタ」に
+  よって全メンバーの画面から静かに消える。
+  「解散されました」「○さんが退出しました」等の通知・理由は一切表示しない。
+- メンバーでない/権限のないユーザーからのアクセスは、常に404で
+  存在自体を明かさない（403にはしない）。
 """
 
 import datetime as dt
@@ -34,11 +45,28 @@ from app.models import Room, RoomMember, User
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
 
-def _serialize_room_summary(room: Room) -> dict:
+def _can_disband(room: Room, viewer: User | None) -> bool:
+    """viewer が「たたむ（解散）」ボタンを操作できるかどうか
+
+    - おへやの作成者本人（キッズ）本人 or
+    - 作成者キッズの保護者
+    のいずれかであれば True
+    """
+    if viewer is None:
+        return False
+    if room.created_by_kid_id == viewer.id:
+        return True
+    if viewer.role == "parent" and room.creator is not None:
+        return room.creator.parent_id == viewer.id
+    return False
+
+
+def _serialize_room_summary(room: Room, viewer: User | None = None) -> dict:
     return {
         "id": room.id,
         "name": room.name,
         "icon": room.icon or "🏠",
+        "can_disband": _can_disband(room, viewer),
     }
 
 
@@ -65,6 +93,15 @@ def _get_active_membership(db: Session, room_id: int, kid_id: int) -> RoomMember
     )
 
 
+def _get_active_room(db: Session, room_id: int) -> Room | None:
+    """解散済み（is_active=False）ではない、有効なおへやのみ取得する"""
+    return (
+        db.query(Room)
+        .filter(Room.id == room_id, Room.is_active == True)  # noqa: E712
+        .first()
+    )
+
+
 # ------------------------------------------------------------------
 # わたしのおへや（自分が正式メンバーのおへやだけ）
 # ------------------------------------------------------------------
@@ -77,13 +114,17 @@ async def my_rooms(
 
     memberships = (
         db.query(RoomMember)
-        .options(joinedload(RoomMember.room))
+        .options(joinedload(RoomMember.room).joinedload(Room.creator))
         .filter(RoomMember.kid_id == user.id, RoomMember.status == "active")
         .all()
     )
+    # 解散済み（is_active=False）のおへやは、理由を出さず静かに一覧から除外する
     rooms = [m.room for m in memberships if m.room and m.room.is_active]
     return JSONResponse(
-        {"success": True, "rooms": [_serialize_room_summary(r) for r in rooms]}
+        {
+            "success": True,
+            "rooms": [_serialize_room_summary(r, user) for r in rooms],
+        }
     )
 
 
@@ -108,12 +149,13 @@ async def list_invitations(
     )
     result = []
     for m in memberships:
-        if not m.room:
+        if not m.room or not m.room.is_active:
+            # 解散済みのおへやへの古い招待も、理由を出さず静かに見せない
             continue
         result.append(
             {
                 "membership_id": m.id,
-                "room": _serialize_room_summary(m.room),
+                "room": _serialize_room_summary(m.room, user),
                 # "invited"  : 本人がまだ応答していない（さんかする／やめておく を選べる）
                 # "accepted" : 本人は「さんかする」を選んだが、保護者の承認待ち
                 "status": m.status,
@@ -156,7 +198,7 @@ async def create_room(
     db.add(owner_membership)
     db.commit()
 
-    return JSONResponse({"success": True, "room": _serialize_room_summary(room)})
+    return JSONResponse({"success": True, "room": _serialize_room_summary(room, user)})
 
 
 # ------------------------------------------------------------------
@@ -175,6 +217,10 @@ async def invite_to_room(
     membership = _get_active_membership(db, room_id, user.id)
     if membership is None:
         # メンバーでない場合、おへやの存在すら明かさない
+        raise HTTPException(status_code=404, detail="おへやが みつかりません")
+
+    room = _get_active_room(db, room_id)
+    if room is None:
         raise HTTPException(status_code=404, detail="おへやが みつかりません")
 
     receiver = (
@@ -318,9 +364,10 @@ async def parent_pending_approvals(
         {
             "membership_id": m.id,
             "kid_name": m.kid.display_name if m.kid else None,
-            "room": _serialize_room_summary(m.room) if m.room else None,
+            "room": _serialize_room_summary(m.room, parent) if m.room else None,
         }
         for m in members
+        if m.room and m.room.is_active
     ]
     return JSONResponse({"success": True, "approvals": approvals})
 
@@ -342,7 +389,7 @@ async def get_room_detail(
         # メンバーでない場合はデータの存在自体を明かさない（403ではなく404）
         raise HTTPException(status_code=404, detail="おへやが みつかりません")
 
-    room = db.query(Room).filter(Room.id == room_id, Room.is_active == True).first()  # noqa: E712
+    room = _get_active_room(db, room_id)
     if room is None:
         raise HTTPException(status_code=404, detail="おへやが みつかりません")
 
@@ -356,7 +403,49 @@ async def get_room_detail(
     return JSONResponse(
         {
             "success": True,
-            "room": _serialize_room_summary(room),
+            "room": _serialize_room_summary(room, user),
             "members": [_serialize_member(m) for m in active_members],
+            "can_disband": _can_disband(room, user),
         }
     )
+
+
+# ------------------------------------------------------------------
+# おへやを たたむ（解散）。作成者本人（キッズ）またはその保護者のみ実行可能。
+# ------------------------------------------------------------------
+@router.post("/{room_id}/disband")
+async def disband_room(
+    room_id: int,
+    user: User | None = Depends(get_active_user),
+    db: Session = Depends(get_db),
+):
+    """おへやを解散する（静かに消えるだけで、理由や通知は一切表示しない）
+
+    - 実行できるのは、おへやの作成者本人（キッズ）、またはそのキッズの保護者のみ。
+    - それ以外（他のメンバーや無関係な第三者）からのアクセスは、
+      おへやの存在自体を明かさないため404を返す（403にはしない）。
+    - 実際にはDeleteせず Room.is_active = False にするだけ。
+      これにより my-rooms / 招待一覧 / 詳細取得などから全メンバーの画面で
+      静かに消える。「解散されました」等のメッセージは一切送らない。
+    """
+    if user is None:
+        raise HTTPException(status_code=401, detail="ログインしてください")
+
+    room = (
+        db.query(Room)
+        .options(joinedload(Room.creator))
+        .filter(Room.id == room_id, Room.is_active == True)  # noqa: E712
+        .first()
+    )
+    if room is None:
+        # 既に解散済み、または存在しない場合も同じ404で統一する
+        raise HTTPException(status_code=404, detail="おへやが みつかりません")
+
+    if not _can_disband(room, user):
+        # 権限がない場合も、存在自体を明かさないため404で統一する
+        raise HTTPException(status_code=404, detail="おへやが みつかりません")
+
+    room.is_active = False
+    db.commit()
+
+    return JSONResponse({"success": True})

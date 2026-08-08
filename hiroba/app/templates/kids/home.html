@@ -43,6 +43,13 @@
       moodHtml = '<span class="hiroba-post-mood">' + Hiroba.escapeHtml(post.mood_stamp) + '</span>';
     }
 
+    // 本人 or その保護者だけに「けす」ボタンを表示する（第三者には見えない）
+    var deleteHtml = "";
+    if (post.can_delete) {
+      deleteHtml =
+        '<button type="button" class="hiroba-post-delete-btn" data-delete-post-id="' + post.id + '" aria-label="けす">🗑️</button>';
+    }
+
     var reactionsHtml = REACTIONS.map(function (r) {
       var count = (post.reactions && post.reactions[r.type]) || 0;
       return (
@@ -63,6 +70,7 @@
       '      <div class="hiroba-post-time">' + post.created_at + '</div>' +
       '    </div>' +
       '    ' + moodHtml +
+      '    ' + deleteHtml +
       '  </div>' +
       '  ' + mediaHtml +
       '  ' + audioHtml +
@@ -81,6 +89,12 @@
     root.querySelectorAll(".hiroba-audio-play-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
         onAudioPlayClick(btn);
+      });
+    });
+
+    root.querySelectorAll(".hiroba-post-delete-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        onDeleteClick(btn);
       });
     });
   }
@@ -133,6 +147,25 @@
       if (e.status === 401) {
         window.location.href = "/login";
       }
+    }
+  }
+
+  // 投稿を「けす」（理由や確認メッセージは出さず、静かにDOMから消える）
+  async function onDeleteClick(btn) {
+    var card = btn.closest(".hiroba-post-card");
+    if (!card) return;
+    var postId = card.getAttribute("data-post-id");
+
+    btn.disabled = true;
+    try {
+      await Hiroba.api("/api/posts/" + postId + "/delete", { method: "POST" });
+      card.classList.add("is-removing");
+      setTimeout(function () {
+        if (card.parentNode) card.parentNode.removeChild(card);
+      }, 280);
+    } catch (e) {
+      // 失敗しても理由は表示せず、そっとボタンを戻すだけにする
+      btn.disabled = false;
     }
   }
 

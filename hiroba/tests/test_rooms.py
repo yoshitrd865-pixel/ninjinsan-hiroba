@@ -5,6 +5,8 @@
 - 自分が正式メンバーのおへやだけが一覧に出る（検索・一覧・おすすめはそもそも存在しない）
 - 招待→本人応答→保護者承認 の3段階を経て初めて正式メンバーになる
 - /api/rooms/{room_id} はメンバー以外には常に404（403で存在を明かすこともしない）
+- おへやの解散は作成者本人（キッズ）またはその保護者のみ実行可能で、
+  理由や通知を出さずに全メンバーの画面から静かに消える
 """
 
 from conftest import create_family, new_client, switch_to_kid, switch_to_parent
@@ -179,3 +181,107 @@ def test_parent_can_reject_room_membership():
     assert resp.status_code == 404
 
 
+def test_owner_kid_can_disband_room_and_it_quietly_disappears_for_everyone():
+    """作成者本人が解散すると、理由や通知なしに全メンバーの画面から静かに消える"""
+    client_owner = new_client()
+    create_family(client_owner, "08010101010", "親D1", "こどもD1")
+    resp = client_owner.post("/api/rooms/create", data={"name": "たたむへや", "icon": "📦"})
+    room_id = resp.json()["room"]["id"]
+
+    # 作成者本人には can_disband=True が見える
+    resp = client_owner.get("/api/rooms/my-rooms")
+    room_summary = next(r for r in resp.json()["rooms"] if r["id"] == room_id)
+    assert room_summary["can_disband"] is True
+
+    # もう一人、正式メンバーとして参加させる
+    client_member = new_client()
+    member_family = create_family(client_member, "08020202020", "親D2", "こどもD2")
+    resp = client_owner.post(
+        f"/api/rooms/{room_id}/invite", data={"receiver_kid_id": member_family["kid_id"]}
+    )
+    membership_id = resp.json()["membership"]["id"]
+    client_member.post(
+        f"/api/rooms/invitations/{membership_id}/respond", data={"decision": "accept"}
+    )
+    switch_to_parent(client_member)
+    client_member.post(
+        f"/api/rooms/invitations/{membership_id}/parent-approve", data={"decision": "approve"}
+    )
+    switch_to_kid(client_member, member_family["kid_id"])
+
+    # メンバーには can_disband=False（作成者ではないため）
+    resp = client_member.get("/api/rooms/my-rooms")
+    member_room_summary = next(r for r in resp.json()["rooms"] if r["id"] == room_id)
+    assert member_room_summary["can_disband"] is False
+
+    # 作成者が解散する
+    resp = client_owner.post(f"/api/rooms/{room_id}/disband")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body == {"success": True}  # 理由や通知メッセージは一切含まれない
+
+    # 作成者本人の画面からも静かに消える
+    resp = client_owner.get("/api/rooms/my-rooms")
+    assert room_id not in [r["id"] for r in resp.json()["rooms"]]
+    resp = client_owner.get(f"/api/rooms/{room_id}")
+    assert resp.status_code == 404
+
+    # 他メンバーの画面からも「解散されました」等の通知なしに静かに消える
+    resp = client_member.get("/api/rooms/my-rooms")
+    assert room_id not in [r["id"] for r in resp.json()["rooms"]]
+    resp = client_member.get(f"/api/rooms/{room_id}")
+    assert resp.status_code == 404
+
+
+def test_parent_of_creator_can_disband_room():
+    """作成者キッズの保護者も、おへやを解散できる"""
+    client_owner = new_client()
+    owner_family = create_family(client_owner, "08030303030", "親D3", "こどもD3")
+    resp = client_owner.post("/api/rooms/create", data={"name": "ほごしゃがたたむ", "icon": "📦"})
+    room_id = resp.json()["room"]["id"]
+
+    switch_to_parent(client_owner)
+    resp = client_owner.post(f"/api/rooms/{room_id}/disband")
+    assert resp.status_code == 200, resp.text
+
+    # 詳細取得APIはキッズプロフィール専用のため、キッズに戻して確認する
+    switch_to_kid(client_owner, owner_family["kid_id"])
+    resp = client_owner.get(f"/api/rooms/{room_id}")
+    assert resp.status_code == 404
+
+
+def test_non_owner_member_cannot_disband_room():
+    """作成者本人（またはその保護者）以外は、404で存在を明かさずに解散できない"""
+    client_owner = new_client()
+    create_family(client_owner, "08040404040", "親D4", "こどもD4")
+    resp = client_owner.post("/api/rooms/create", data={"name": "こわされないへや", "icon": "🔐"})
+    room_id = resp.json()["room"]["id"]
+
+    client_member = new_client()
+    member_family = create_family(client_member, "08050505050", "親D5", "こどもD5")
+    resp = client_owner.post(
+        f"/api/rooms/{room_id}/invite", data={"receiver_kid_id": member_family["kid_id"]}
+    )
+    membership_id = resp.json()["membership"]["id"]
+    client_member.post(
+        f"/api/rooms/invitations/{membership_id}/respond", data={"decision": "accept"}
+    )
+    switch_to_parent(client_member)
+    client_member.post(
+        f"/api/rooms/invitations/{membership_id}/parent-approve", data={"decision": "approve"}
+    )
+    switch_to_kid(client_member, member_family["kid_id"])
+
+    # 正式メンバーだが作成者ではないため解散できない（403ではなく404）
+    resp = client_member.post(f"/api/rooms/{room_id}/disband")
+    assert resp.status_code == 404
+
+    # おへやはまだ存在している（作成者からは見える）
+    resp = client_owner.get(f"/api/rooms/{room_id}")
+    assert resp.status_code == 200
+
+    # 無関係な第三者も同様に404
+    client_outsider = new_client()
+    create_family(client_outsider, "08060606060", "親D6", "こどもD6")
+    resp = client_outsider.post(f"/api/rooms/{room_id}/disband")
+    assert resp.status_code == 404
