@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.2, viewport-fit=cover">
+  <title>{% block title %}縁側（えんがわ）{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+
+  {% if active != 'login' %}
+  <header class="app-header">
+    <div class="app-header__inner">
+      <span class="app-header__logo">🏡 縁側</span>
+      <span class="app-header__sub">えんがわ</span>
+    </div>
+  </header>
+  {% endif %}
+
+  <main class="app-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if active != 'login' %}
+  <nav class="bottom-nav">
+    <a href="/" class="nav-item {% if active == 'home' %}nav-item--active{% endif %}">
+      <span class="nav-icon" aria-hidden="true">🏠</span>
+      <span class="nav-label">マイページ</span>
+    </a>
+    <a href="/ochanoma" class="nav-item {% if active == 'ochanoma' %}nav-item--active{% endif %}">
+      <span class="nav-icon" aria-hidden="true">🍵</span>
+      <span class="nav-label">お茶の間</span>
+    </a>
+    <a href="/talk" class="nav-item {% if active == 'talk' %}nav-item--active{% endif %}">
+      <span class="nav-icon" aria-hidden="true">💬</span>
+      <span class="nav-label">おしゃべり</span>
+    </a>
+
+  </nav>
+  {% endif %}
+
+  <script src="{{ url_for('static', path='js/main.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

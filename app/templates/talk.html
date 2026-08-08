@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}おしゃべり - 縁側（えんがわ）{% endblock %}
+
+{% block content %}
+<div class="page page--talk">
+
+  <h1 class="page-title">おしゃべり・通話</h1>
+
+  <div class="talk-cards">
+
+    <button type="button" class="talk-card talk-card--ai" id="btn-open-ai-call">
+      <span class="talk-card__icon">🤖</span>
+      <span class="talk-card__title">AIとおしゃべり</span>
+      <span class="talk-card__sub">24時間いつでもOK</span>
+    </button>
+
+    <a href="tel:0120000000" class="talk-card talk-card--family">
+      <span class="talk-card__icon">📞</span>
+      <span class="talk-card__title">家族にすぐ電話</span>
+      <span class="talk-card__sub">ワンタップでつながる</span>
+    </a>
+
+  </div>
+
+  {% if not ai_enabled %}
+  <p class="talk-notice">
+    ※ 現在AI機能は準備中です（管理者がOPENAI_API_KEYを設定すると利用できます）
+  </p>
+  {% endif %}
+
+</div>
+
+<!-- AIおしゃべりチャットモーダル -->
+<div class="call-modal" id="ai-call-modal" hidden>
+  <div class="call-modal__inner">
+    <div class="call-modal__avatar">🤖</div>
+    <p class="call-modal__status">AIとおしゃべり中</p>
+
+    <div class="chat-log" id="chat-log">
+      {% for msg in chat_history %}
+        <div class="chat-bubble chat-bubble--{{ msg.role }}">{{ msg.content }}</div>
+      {% endfor %}
+      {% if not chat_history %}
+        <div class="chat-bubble chat-bubble--assistant">こんにちは！今日はどんな一日でしたか？</div>
+      {% endif %}
+    </div>
+
+    <form id="chat-form" class="chat-form">
+      <input
+        type="text"
+        id="chat-input"
+        class="chat-input"
+        placeholder="ここにお話を入力してください"
+        autocomplete="off"
+      >
+      <button type="submit" class="btn btn--primary chat-send-btn">送る</button>
+    </form>
+
+    <button type="button" class="btn btn--danger btn--huge" id="btn-end-call">
+      通話を終わる
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.Engawa && window.Engawa.initTalkPage) {
+      window.Engawa.initTalkPage();
+    }
+  });
+</script>
+{% endblock %}

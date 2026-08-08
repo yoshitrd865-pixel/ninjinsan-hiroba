@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}ログイン - 縁側（えんがわ）{% endblock %}
+{% block body_class %}login-body{% endblock %}
+
+{% block content %}
+<div class="login-screen">
+
+  <div class="login-logo">
+    <div class="login-logo__icon">🏡</div>
+    <h1 class="login-logo__title">縁側</h1>
+    <p class="login-logo__sub">えんがわ　―　みんなとつながる場所</p>
+  </div>
+
+  <p class="login-error" id="login-error" hidden></p>
+
+  <!-- ステップ1: 電話番号入力 -->
+  <section id="step-phone" class="login-step login-step--active">
+    <h2 class="login-heading">携帯電話番号を<br>入力してください</h2>
+
+    <input
+      type="tel"
+      id="phone-input"
+      class="big-input"
+      placeholder="09012345678"
+      inputmode="numeric"
+      autocomplete="tel"
+    >
+
+    <button id="btn-send-code" type="button" class="btn btn--primary btn--huge">
+      認証コードを送る
+    </button>
+
+    <p class="login-note">
+      {% if sms_live_mode %}
+        SMSで4桁の認証コードをお送りします
+      {% else %}
+        ※開発モード：SMSは送信されず、画面にコードが表示されます
+      {% endif %}
+    </p>
+  </section>
+
+  <!-- ステップ2: SMSコード入力 -->
+  <section id="step-code" class="login-step">
+    <h2 class="login-heading">届いた4桁の番号を<br>入力してください</h2>
+
+    <p class="login-note login-note--debug" id="debug-code-note" hidden></p>
+
+    <div class="code-boxes" id="code-boxes">
+      <input type="text" maxlength="1" class="code-box" inputmode="numeric" data-index="0">
+      <input type="text" maxlength="1" class="code-box" inputmode="numeric" data-index="1">
+      <input type="text" maxlength="1" class="code-box" inputmode="numeric" data-index="2">
+      <input type="text" maxlength="1" class="code-box" inputmode="numeric" data-index="3">
+    </div>
+
+    <p class="login-note" id="code-status">4つの数字を入力してください</p>
+
+    <button id="btn-confirm-code" type="button" class="btn btn--primary btn--huge" disabled>
+      つぎへ
+    </button>
+
+    <button id="btn-resend" type="button" class="btn btn--ghost btn--huge">
+      コードをもう一度送る
+    </button>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.Engawa && window.Engawa.initLoginPage) {
+      window.Engawa.initLoginPage();
+    }
+  });
+</script>
+{% endblock %}

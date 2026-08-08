@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}マイページ - 縁側（えんがわ）{% endblock %}
+
+{% block content %}
+<div class="page page--home">
+
+  <div class="page-title-row">
+    <h1 class="page-title">マイページ</h1>
+    <form action="/logout" method="post" class="logout-form">
+      <button type="submit" class="logout-btn">ログアウト</button>
+    </form>
+  </div>
+
+  <!-- 〇年前の今日 振り返りカード -->
+  {% if memory %}
+  <section class="memory-card">
+    <div class="memory-card__badge">{{ memory.years_ago }}年前の今日</div>
+    <div class="memory-card__body">
+      {% if memory.image %}
+      <img class="memory-card__image memory-card__image--photo" src="{{ memory.image }}" alt="思い出の写真">
+      {% else %}
+      <div class="memory-card__image" aria-hidden="true">📷</div>
+      {% endif %}
+      <div class="memory-card__text">
+        <p class="memory-card__date">{{ memory.date_label }}</p>
+        <p class="memory-card__stamp">{{ memory.stamp }} {{ memory.stamp_label }}</p>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- かんたん投稿（3ステップ） -->
+  <section class="post-widget">
+    <h2 class="post-widget__title">きょうの気持ちを投稿しよう</h2>
+
+    <div class="step-indicator">
+      <span class="step-dot step-dot--active" data-step="1">1</span>
+      <span class="step-line"></span>
+      <span class="step-dot" data-step="2">2</span>
+      <span class="step-line"></span>
+      <span class="step-dot" data-step="3">3</span>
+    </div>
+
+    <!-- STEP1: 写真選択 -->
+    <div class="post-step post-step--active" id="post-step-1">
+      <p class="post-step__label">① 写真をえらぶ（なくてもOK）</p>
+      <label class="photo-picker" for="photo-input">
+        <span class="photo-picker__icon">📷</span>
+        <span class="photo-picker__text">写真をえらぶ</span>
+        <input type="file" id="photo-input" accept="image/*" hidden>
+      </label>
+      <img id="photo-preview" class="photo-preview" alt="えらんだ写真" hidden>
+      <button type="button" class="btn btn--ghost btn--huge" id="btn-skip-photo">
+        写真なしでつぎへ
+      </button>
+    </div>
+
+    <!-- STEP2: 気分スタンプ選択 -->
+    <div class="post-step" id="post-step-2">
+      <p class="post-step__label">② 気分をえらぶ</p>
+      <div class="stamp-grid">
+        <button type="button" class="stamp-btn" data-stamp="😊" data-label="嬉しかった">
+          <span class="stamp-btn__emoji">😊</span>
+          <span class="stamp-btn__label">嬉しかった</span>
+        </button>
+        <button type="button" class="stamp-btn" data-stamp="😋" data-label="美味しかった">
+          <span class="stamp-btn__emoji">😋</span>
+          <span class="stamp-btn__label">美味しかった</span>
+        </button>
+        <button type="button" class="stamp-btn" data-stamp="😲" data-label="びっくりした">
+          <span class="stamp-btn__emoji">😲</span>
+          <span class="stamp-btn__label">びっくりした</span>
+        </button>
+        <button type="button" class="stamp-btn" data-stamp="😌" data-label="のんびりした">
+          <span class="stamp-btn__emoji">😌</span>
+          <span class="stamp-btn__label">のんびりした</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP3: 確認・投稿 -->
+    <div class="post-step" id="post-step-3">
+      <p class="post-step__label">③ かくにんして投稿</p>
+      <div class="confirm-card">
+        <img id="confirm-photo" class="confirm-card__photo" alt="投稿する写真" hidden>
+        <div class="confirm-card__stamp" id="confirm-stamp"></div>
+      </div>
+      <button type="button" class="btn btn--primary btn--huge" id="btn-submit-post">
+        この内容で投稿する
+      </button>
+      <button type="button" class="btn btn--ghost btn--huge" id="btn-back-post">
+        やりなおす
+      </button>
+    </div>
+
+    <p class="post-success" id="post-success" hidden>
+      投稿しました！みんなに気持ちが届きます 🎉
+    </p>
+    <p class="post-error" id="post-error" hidden></p>
+  </section>
+
+  <!-- 投稿一覧 -->
+  <section class="post-timeline">
+    <h2 class="post-widget__title">これまでの投稿</h2>
+    {% if posts %}
+      <ul class="timeline-list" id="timeline-list">
+        {% for post in posts %}
+        <li class="timeline-item">
+          {% if post.image_path %}
+          <img class="timeline-item__photo" src="{{ post.image_path }}" alt="投稿写真">
+          {% endif %}
+          <div class="timeline-item__body">
+            <p class="timeline-item__stamp">{{ post.stamp }} {{ post.stamp_label }}</p>
+            <p class="timeline-item__date">{{ post.created_at.strftime('%Y年%m月%d日 %H:%M') }}</p>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="timeline-empty" id="timeline-empty">まだ投稿がありません。さっそく投稿してみましょう！</p>
+    {% endif %}
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.Engawa && window.Engawa.initHomePage) {
+      window.Engawa.initHomePage();
+    }
+  });
+</script>
+{% endblock %}

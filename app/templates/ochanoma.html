@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}お茶の間 - 縁側（えんがわ）{% endblock %}
+
+{% block content %}
+<div class="page page--ochanoma">
+
+  <h1 class="page-title">🍵 お茶の間</h1>
+
+  <!-- 状態1: 開始前（スタイル・話題選択） -->
+  <section class="ochanoma-intro" id="ochanoma-intro">
+    <p class="ochanoma-lead">気軽にみんなとおしゃべりしませんか？<br>手を挙げた人が集まったら始まります。</p>
+
+    <div class="ochanoma-pref">
+      <p class="ochanoma-pref__label">① 今日のスタイルは？</p>
+      <div class="pref-grid">
+        <button type="button" class="pref-btn" data-style="talk">
+          <span class="pref-btn__icon">🗣️</span>
+          <span class="pref-btn__label">たくさん話したい</span>
+        </button>
+        <button type="button" class="pref-btn" data-style="listen">
+          <span class="pref-btn__icon">🍵</span>
+          <span class="pref-btn__label">聞くだけでもOK</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="ochanoma-pref">
+      <p class="ochanoma-pref__label">② 話したい話題は？（いくつでも）</p>
+      <div class="topic-grid">
+        <button type="button" class="topic-btn" data-topic="雑談">💬 雑談</button>
+        <button type="button" class="topic-btn" data-topic="趣味">🎨 趣味</button>
+        <button type="button" class="topic-btn" data-topic="料理">🍳 料理</button>
+        <button type="button" class="topic-btn" data-topic="昔の思い出">📷 昔の思い出</button>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn--primary btn--huge" id="btn-start-waiting">
+      🍵 誰かとおしゃべりしたい
+    </button>
+    <p class="ochanoma-note">
+      画面を閉じたり、他のページを見ていても大丈夫です。<br>仲間が集まったらお知らせします。
+    </p>
+    <p class="ochanoma-error" id="ochanoma-error" hidden></p>
+  </section>
+
+  <!-- 状態2: 待機中（マッチング待ち） -->
+  <section class="ochanoma-waiting" id="ochanoma-waiting" hidden>
+    <div class="waiting-spinner" aria-hidden="true">🍵</div>
+    <p class="waiting-status" id="waiting-status">お仲間を探しています…</p>
+    <p class="waiting-note">のんびりお待ちください。準備ができたらお知らせします。</p>
+    <button type="button" class="btn btn--ghost btn--huge" id="btn-cancel-waiting">
+      待つのをやめる
+    </button>
+  </section>
+
+  <!-- 状態3: お茶の間（グループ会話） -->
+  <section class="ochanoma-room" id="ochanoma-room" hidden>
+
+    <div class="room-topic-badge" id="room-topic-badge">話題：雑談</div>
+
+    <div class="room-participants" id="room-participants">
+      <!-- JSで生成 -->
+    </div>
+
+    <p class="room-status" id="room-status">AI司会が進行しています</p>
+
+    <div class="chat-log chat-log--room" id="ochanoma-chat-log">
+      <!-- JSで生成 -->
+    </div>
+
+    <div class="quick-replies">
+      <button type="button" class="quick-reply-btn" data-text="こんにちは">こんにちは</button>
+      <button type="button" class="quick-reply-btn" data-text="いいですね">いいですね</button>
+      <button type="button" class="quick-reply-btn" data-text="わかります🌸">わかります🌸</button>
+    </div>
+
+    <form id="ochanoma-chat-form" class="chat-form">
+      <input
+        type="text"
+        id="ochanoma-chat-input"
+        class="chat-input"
+        placeholder="ここにお話を入力してください"
+        autocomplete="off"
+      >
+      <button type="submit" class="btn btn--primary chat-send-btn">送る</button>
+    </form>
+
+    <button type="button" class="btn btn--danger btn--huge" id="btn-leave-room">
+      🚪 お茶の間を出る
+    </button>
+  </section>
+
+</div>
+
+<!-- マッチング通知ポップアップ -->
+<div class="match-modal" id="match-modal" hidden>
+  <div class="match-modal__inner">
+    <div class="match-modal__icon">🍵</div>
+    <h2 class="match-modal__title">お茶の間が開きます！</h2>
+    <p class="match-modal__desc" id="match-modal-desc">仲間が集まりました。参加しますか？</p>
+    <button type="button" class="btn btn--primary btn--huge" id="btn-join-room">参加する</button>
+    <button type="button" class="btn btn--ghost btn--huge" id="btn-skip-room">今回は見送る</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.Engawa && window.Engawa.initOchanomaPage) {
+      window.Engawa.initOchanomaPage();
+    }
+  });
+</script>
+{% endblock %}
