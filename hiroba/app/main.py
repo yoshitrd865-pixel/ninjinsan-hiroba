@@ -31,6 +31,8 @@ from app.routers import auth as auth_router
 from app.routers import kids as kids_router
 from app.routers import reactions as reactions_router
 from app.routers import promises as promises_router
+from app.routers import rooms as rooms_router
+
 
 
 SECRET_KEY = os.environ.get("HIROBA_SECRET_KEY", "hiroba-dev-secret-key-change-me")
@@ -57,6 +59,8 @@ app.include_router(auth_router.router)
 app.include_router(kids_router.router)
 app.include_router(reactions_router.router)
 app.include_router(promises_router.router)
+app.include_router(rooms_router.router)
+
 
 
 
@@ -122,7 +126,19 @@ async def kids_ochanoma(request: Request):
 
 
 
+@app.get("/kids/rooms", response_class=HTMLResponse)
+async def kids_rooms(request: Request):
+    """わたしのおへや（完全クローズド・招待制のグループ機能）"""
+    context = {
+        "request": request,
+        "active": "rooms",
+        "app_name": "ひろば",
+    }
+    return templates.TemplateResponse("kids/rooms.html", context)
+
+
 @app.get("/kids/oyako", response_class=HTMLResponse)
+
 async def kids_oyako(request: Request):
     """おうちひと（保護者ページへの案内。まだこの画面自体は簡易表示）"""
     context = {

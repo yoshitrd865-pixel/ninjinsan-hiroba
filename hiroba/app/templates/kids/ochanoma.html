@@ -3,10 +3,11 @@
 {% block content %}
 <div class="hiroba-card" style="text-align:center;">
   <div class="hiroba-section-title" style="justify-content:center;">🍵 おちゃのま</div>
-  <p style="color:var(--hiroba-text-soft); margin:0 0 16px;">おともだちと あそぶ やくそくを してみよう！</p>
+  <p style="color:var(--hiroba-text-soft); margin:0 0 16px;">「あそびたい」を とうこうして、おともだちを さがそう！</p>
   <button type="button" id="open-promise-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--orange">
-    <span class="hiroba-btn-icon">🤝</span> やくそくする！
+    <span class="hiroba-btn-icon">📅</span> あそびたい！
   </button>
+  <div id="my-post-note" style="display:none; margin-top:14px; color:var(--hiroba-text-soft); font-weight:700;"></div>
 </div>
 
 <div class="hiroba-card">
@@ -16,24 +17,60 @@
   </div>
 </div>
 
-<!-- 約束作成モーダル -->
+<div class="hiroba-card">
+  <div class="hiroba-section-title">🧒 みんなの「あそびたい」</div>
+  <div id="board-list">
+    <div class="hiroba-loading">よみこみちゅう… 🌀</div>
+  </div>
+</div>
+
+<!-- あそびたい投稿モーダル -->
 <div id="promise-modal" class="hiroba-modal-overlay" style="display:none;">
   <div class="hiroba-modal">
-    <div id="promise-step-friend">
-      <div style="text-align:center; font-size:20px; font-weight:700;">だれと やくそくする？</div>
-      <div id="friend-grid" class="hiroba-kid-grid" style="margin-top:16px;">
-        <div class="hiroba-loading">よみこみちゅう…</div>
-      </div>
+
+    <!-- Step1: いつ？ -->
+    <div id="promise-step-date">
+      <div style="text-align:center; font-size:20px; font-weight:700;">📅 いつ あそぶ？</div>
+      <div id="date-calendar" style="margin-top:16px;"></div>
+      <div id="date-error" class="hiroba-auth-error"></div>
       <button type="button" id="promise-cancel-btn-1" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">やめる</button>
     </div>
 
-    <div id="promise-step-detail" style="display:none;">
-      <div style="text-align:center; font-size:20px; font-weight:700;">なにをする？</div>
-      <div id="phrase-grid" class="hiroba-stamp-picker" style="margin-top:10px;"></div>
+    <!-- Step2: じかんたい -->
+    <div id="promise-step-time" style="display:none;">
+      <div style="text-align:center; font-size:20px; font-weight:700;">🕐 いつごろ？</div>
+      <div class="hiroba-stamp-picker" style="margin-top:16px;">
+        <button type="button" class="hiroba-stamp hiroba-stamp-btn" data-time-frame="morning">
+          <span style="font-size:34px;">🌞</span><span>ごぜん</span>
+        </button>
+        <button type="button" class="hiroba-stamp hiroba-stamp-btn" data-time-frame="afternoon">
+          <span style="font-size:34px;">🌤</span><span>ごご</span>
+        </button>
+      </div>
+      <button type="button" id="promise-back-btn-2" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">まえに もどる</button>
+    </div>
 
-      <div style="text-align:center; margin-top:16px;">
+    <!-- Step3: どこで？ -->
+    <div id="promise-step-location" style="display:none;">
+      <div style="text-align:center; font-size:20px; font-weight:700;">🏠 どこで あそぶ？</div>
+      <div class="hiroba-stamp-picker" style="margin-top:16px;">
+        <button type="button" class="hiroba-stamp hiroba-stamp-btn" data-location="home_my">
+          <span style="font-size:34px;">🏠</span><span>うち</span>
+        </button>
+        <button type="button" class="hiroba-stamp hiroba-stamp-btn" data-location="home_friend">
+          <span style="font-size:34px;">🏡</span><span>あいてのいえ</span>
+        </button>
+        <button type="button" class="hiroba-stamp hiroba-stamp-btn" data-location="school">
+          <span style="font-size:34px;">🏫</span><span>がっこう・こうてい</span>
+        </button>
+        <button type="button" class="hiroba-stamp hiroba-stamp-btn" data-location="other">
+          <span style="font-size:34px;">🎤</span><span>そのほか</span>
+        </button>
+      </div>
+
+      <div id="location-voice-wrap" style="display:none; text-align:center; margin-top:16px;">
         <button type="button" id="promise-mic-btn" class="hiroba-mic-btn" style="width:100px; height:100px; min-height:100px; font-size:40px;">🎤</button>
-        <div class="hiroba-mic-status" id="promise-mic-status">ボイスメモで つたえてもいいよ！</div>
+        <div class="hiroba-mic-status" id="promise-mic-status">タップして ろくおん かいし！</div>
         <div class="hiroba-voice-playback" id="promise-voice-playback" style="display:none;">
           <button type="button" id="promise-voice-play-btn" class="hiroba-audio-play-btn">▶️</button>
           <button type="button" id="promise-voice-redo-btn" class="hiroba-tool-btn">🔁 やりなおす</button>
@@ -43,17 +80,27 @@
 
       <div id="promise-error" class="hiroba-auth-error"></div>
       <button type="button" id="promise-submit-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--green" style="margin-top:10px;">
-        <span class="hiroba-btn-icon">📨</span> やくそくを おくる！
+        <span class="hiroba-btn-icon">📨</span> とうこうする！
       </button>
-      <button type="button" id="promise-cancel-btn-2" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">やめる</button>
+      <button type="button" id="promise-back-btn-3" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">まえに もどる</button>
     </div>
 
+    <!-- 完了 -->
     <div id="promise-step-sent" style="display:none; text-align:center;">
       <span style="font-size:70px; display:block;">🙏</span>
-      <div style="font-size:20px; font-weight:700; margin-top:8px;">やくそくを おくったよ！</div>
-      <p style="color:var(--hiroba-text-soft);">おうちの人に かくにんして もらってね。</p>
+      <div style="font-size:20px; font-weight:700; margin-top:8px;">とうこう できたよ！</div>
+      <p style="color:var(--hiroba-text-soft);">だれかが「いっしょにあそびたい」って いってくれるかも！</p>
       <button type="button" id="promise-close-btn" class="hiroba-btn hiroba-btn--blue">とじる</button>
     </div>
+  </div>
+</div>
+
+<!-- 応募済みメッセージモーダル -->
+<div id="apply-modal" class="hiroba-modal-overlay" style="display:none;">
+  <div class="hiroba-modal" style="text-align:center;">
+    <span style="font-size:70px; display:block;" id="apply-modal-emoji">😊</span>
+    <div style="font-size:20px; font-weight:700; margin-top:8px;" id="apply-modal-text"></div>
+    <button type="button" id="apply-modal-close-btn" class="hiroba-btn hiroba-btn--blue" style="margin-top:14px;">とじる</button>
   </div>
 </div>
 {% endblock %}
@@ -61,30 +108,32 @@
 {% block scripts %}
 <script>
 (function () {
-  var PHRASES = [
-    { emoji: "🏞️", label: "こうえんで あそぼう" },
-    { emoji: "🎮", label: "ゲームしよう" },
-    { emoji: "🏠", label: "うちに きてね" },
-    { emoji: "🏊", label: "プールいこう" },
-    { emoji: "⚽", label: "サッカーしよう" },
-    { emoji: "🎨", label: "おえかきしよう" }
-  ];
+  var LOCATION_LABELS = {
+    home_my: { emoji: "🏠", text: "うち" },
+    home_friend: { emoji: "🏡", text: "あいてのいえ" },
+    school: { emoji: "🏫", text: "がっこう・こうてい" },
+    other: { emoji: "🎤", text: "そのほか" }
+  };
+  var TIME_FRAME_LABELS = {
+    morning: { emoji: "🌞", text: "ごぜん" },
+    afternoon: { emoji: "🌤", text: "ごご" }
+  };
+  var STATUS_LABELS = {
+    pending_parents: { emoji: "⏳", text: "おうちのひとに かくにんしてるよ😊" },
+    approved: { emoji: "🎉", text: "やくそく できたよ！" },
+    cancelled: { emoji: "😊", text: "こんかいは むずかしいみたい。またこんど あそぼうね😊" }
+  };
 
-  var selectedFriendId = null;
-  var selectedPhrase = "";
+  var selectedDate = null;
+  var selectedTimeFrame = null;
+  var selectedLocation = null;
   var audioBlob = null;
   var mediaRecorder = null;
   var audioChunks = [];
   var isRecording = false;
   var mediaStream = null;
 
-  var STATUS_LABELS = {
-    pending_parents: { emoji: "⏳", text: "おやに おうかがい中…" },
-    approved: { emoji: "🎉", text: "やくそく せいりつ！" },
-    rejected: { emoji: "😢", text: "こんかいは だめだったよ…" }
-  };
-
-  /* -------------------- 約束一覧 -------------------- */
+  /* -------------------- 約束一覧（当事者のみ） -------------------- */
   async function loadPromises() {
     var list = document.getElementById("promise-list");
     try {
@@ -94,7 +143,7 @@
         list.innerHTML =
           '<div class="hiroba-empty-state">' +
           '  <span class="emoji">🤝</span>' +
-          '  まだ やくそくが ないよ！<br>「やくそくする！」から はじめてみよう。' +
+          '  まだ やくそくが ないよ！' +
           '</div>';
         return;
       }
@@ -110,23 +159,26 @@
 
   function renderPromiseCard(p) {
     var statusInfo = STATUS_LABELS[p.status] || STATUS_LABELS.pending_parents;
-    var friendLabel = (p.sender_kid_avatar || "🧒") + " " + p.sender_kid_name +
-      " ＆ " + (p.receiver_kid_avatar || "🧒") + " " + p.receiver_kid_name;
+    var friendLabel = (p.sender_kid_avatar || "🧒") + " " + Hiroba.escapeHtml(p.sender_kid_name || "") +
+      " ＆ " + (p.receiver_kid_avatar || "🧒") + " " + Hiroba.escapeHtml(p.receiver_kid_name || "");
 
+    var timeInfo = TIME_FRAME_LABELS[p.time_frame] || {};
+    var locInfo = LOCATION_LABELS[p.location_type] || {};
     var detailBits = [];
-    if (p.suggested_datetime) detailBits.push("🗓️ " + p.suggested_datetime);
-    if (p.place) detailBits.push("📍 " + p.place);
+    if (p.date) detailBits.push("🗓️ " + p.date);
+    if (timeInfo.emoji) detailBits.push(timeInfo.emoji + " " + timeInfo.text);
+    if (p.detailed_time) detailBits.push("🕐 " + p.detailed_time);
+    if (locInfo.emoji) detailBits.push(locInfo.emoji + " " + locInfo.text);
     var detailHtml = detailBits.length
       ? '<div style="color:var(--hiroba-text-soft); font-size:14px; margin-top:4px;">' + Hiroba.escapeHtml(detailBits.join("　")) + '</div>'
       : "";
 
     var statusClass = p.status === "approved" ? "hiroba-reaction-btn--sugoi" :
-      (p.status === "rejected" ? "hiroba-reaction-btn--yabai" : "hiroba-reaction-btn--omoshiroi");
+      (p.status === "cancelled" ? "hiroba-reaction-btn--yabai" : "hiroba-reaction-btn--omoshiroi");
 
     return (
       '<div class="hiroba-card hiroba-fade-in" style="padding:16px; margin-bottom:14px;">' +
-      '  <div style="font-weight:700;">' + Hiroba.escapeHtml(friendLabel) + '</div>' +
-      '  <div style="font-size:20px; font-weight:900; margin-top:6px;">' + Hiroba.escapeHtml(p.title) + '</div>' +
+      '  <div style="font-weight:700;">' + friendLabel + '</div>' +
       detailHtml +
       '  <div class="' + statusClass + '" style="margin-top:10px; border-radius: var(--hiroba-radius); padding:10px; text-align:center; font-weight:800;">' +
       '    <span style="font-size:26px;">' + statusInfo.emoji + '</span> ' + statusInfo.text +
@@ -135,83 +187,240 @@
     );
   }
 
-  /* -------------------- 約束モーダル：Step1 相手選び -------------------- */
-  var modal = document.getElementById("promise-modal");
-  var stepFriend = document.getElementById("promise-step-friend");
-  var stepDetail = document.getElementById("promise-step-detail");
-  var stepSent = document.getElementById("promise-step-sent");
-
-  function resetModal() {
-    selectedFriendId = null;
-    selectedPhrase = "";
-    audioBlob = null;
-    audioChunks = [];
-    document.getElementById("promise-error").textContent = "";
-    document.getElementById("promise-voice-playback").style.display = "none";
-    document.getElementById("promise-mic-status").textContent = "ボイスメモで つたえてもいいよ！";
-    stepFriend.style.display = "block";
-    stepDetail.style.display = "none";
-    stepSent.style.display = "none";
-  }
-
-  document.getElementById("open-promise-btn").addEventListener("click", async function () {
-    resetModal();
-    modal.style.display = "flex";
-    var grid = document.getElementById("friend-grid");
-    grid.innerHTML = '<div class="hiroba-loading">よみこみちゅう…</div>';
+  /* -------------------- 掲示板（自分以外の「あそびたい」投稿） -------------------- */
+  async function loadBoard() {
+    var list = document.getElementById("board-list");
     try {
-      var data = await Hiroba.api("/api/promises/other-kids");
-      var kids = (data && data.kids) || [];
-      if (kids.length === 0) {
-        grid.innerHTML = '<div class="hiroba-empty-state" style="grid-column: 1 / -1;">まだ ほかの キッズが いないみたい…</div>';
+      var data = await Hiroba.api("/api/promises/board");
+      var posts = (data && data.posts) || [];
+      if (posts.length === 0) {
+        list.innerHTML =
+          '<div class="hiroba-empty-state">' +
+          '  <span class="emoji">🧒</span>' +
+          '  いま「あそびたい」の とうこうは ないみたい。' +
+          '</div>';
         return;
       }
-      grid.innerHTML = "";
-      kids.forEach(function (kid) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "hiroba-kid-avatar-btn";
-        btn.innerHTML =
-          '<div class="hiroba-kid-avatar-circle">' + (kid.avatar_icon || "🧒") + '</div>' +
-          '<div class="hiroba-kid-name">' + Hiroba.escapeHtml(kid.display_name) + '</div>';
+      list.innerHTML = posts.map(renderBoardCard).join("");
+      list.querySelectorAll("[data-apply-post-id]").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          selectedFriendId = kid.id;
-          stepFriend.style.display = "none";
-          stepDetail.style.display = "block";
+          applyToPost(parseInt(btn.getAttribute("data-apply-post-id"), 10), btn);
         });
-        grid.appendChild(btn);
       });
     } catch (e) {
-      grid.innerHTML = '<div class="hiroba-empty-state" style="grid-column: 1 / -1;">よみこみに しっぱいしちゃった…</div>';
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      list.innerHTML = '<div class="hiroba-empty-state"><span class="emoji">😢</span>よみこみに しっぱいしちゃった…</div>';
+    }
+  }
+
+  function renderBoardCard(post) {
+    var timeInfo = TIME_FRAME_LABELS[post.time_frame] || {};
+    var locInfo = LOCATION_LABELS[post.location_type] || {};
+    var detailBits = [];
+    if (post.date) detailBits.push("🗓️ " + post.date);
+    if (timeInfo.emoji) detailBits.push(timeInfo.emoji + " " + timeInfo.text);
+    if (locInfo.emoji) detailBits.push(locInfo.emoji + " " + locInfo.text);
+
+    var audioHtml = "";
+    if (post.location_audio_url) {
+      audioHtml =
+        '<div class="hiroba-audio-player" style="margin-top:10px;">' +
+        '  <button type="button" class="hiroba-audio-play-btn" data-audio-src="' + Hiroba.escapeHtml(post.location_audio_url) + '">▶️</button>' +
+        '  <span class="hiroba-audio-label">ばしょの ボイスメモ</span>' +
+        '</div>';
+    }
+
+    return (
+      '<div class="hiroba-card hiroba-fade-in" style="padding:16px; margin-bottom:14px;">' +
+      '  <div style="display:flex; align-items:center; gap:10px;">' +
+      '    <div class="hiroba-post-avatar">' + (post.kid_avatar || "🧒") + '</div>' +
+      '    <div style="font-weight:700; font-size:18px;">' + Hiroba.escapeHtml(post.kid_name || "きっず") + '</div>' +
+      '  </div>' +
+      '  <div style="color:var(--hiroba-text-soft); font-size:15px; margin-top:8px;">' + Hiroba.escapeHtml(detailBits.join("　")) + '</div>' +
+      audioHtml +
+      '  <button type="button" class="hiroba-btn hiroba-btn--orange" style="margin-top:12px;" data-apply-post-id="' + post.id + '">' +
+      '    <span class="hiroba-btn-icon">🤝</span> いっしょに あそびたい！' +
+      '  </button>' +
+      '</div>'
+    );
+  }
+
+  document.addEventListener("click", function (evt) {
+    var btn = evt.target.closest && evt.target.closest("[data-audio-src]");
+    if (!btn) return;
+    var audio = btn._audioEl;
+    if (!audio) {
+      audio = new Audio(btn.getAttribute("data-audio-src"));
+      btn._audioEl = audio;
+      audio.addEventListener("ended", function () { btn.textContent = "▶️"; });
+    }
+    if (audio.paused) {
+      audio.play();
+      btn.textContent = "⏸️";
+    } else {
+      audio.pause();
+      btn.textContent = "▶️";
     }
   });
 
-  /* -------------------- Step2 内容選択（フレーズ・ボイス） -------------------- */
-  function buildPhraseGrid() {
-    var wrap = document.getElementById("phrase-grid");
-    PHRASES.forEach(function (p) {
+  async function applyToPost(postId, btn) {
+    btn.disabled = true;
+    var originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="hiroba-btn-icon">⏳</span> おうぼちゅう…';
+    try {
+      await Hiroba.api("/api/promises/posts/" + postId + "/apply", { method: "POST" });
+      showApplyModal("😊", "おうちのひとに かくにんしてるよ😊");
+      loadBoard();
+      loadPromises();
+    } catch (e) {
+      showApplyModal("😢", e.message || "おうぼに しっぱいしちゃった…");
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  }
+
+  function showApplyModal(emoji, text) {
+    document.getElementById("apply-modal-emoji").textContent = emoji;
+    document.getElementById("apply-modal-text").textContent = text;
+    document.getElementById("apply-modal").style.display = "flex";
+  }
+  document.getElementById("apply-modal-close-btn").addEventListener("click", function () {
+    document.getElementById("apply-modal").style.display = "none";
+  });
+
+  /* -------------------- 自分の投稿状態 -------------------- */
+  async function loadMyPost() {
+    try {
+      var data = await Hiroba.api("/api/promises/posts/mine");
+      var note = document.getElementById("my-post-note");
+      if (data && data.post) {
+        note.style.display = "block";
+        note.textContent = "📮 とうこうずみ： おうぼを まってるよ！";
+      } else {
+        note.style.display = "none";
+      }
+    } catch (e) {
+      /* noop */
+    }
+  }
+
+  /* -------------------- Step1: カレンダー（📅 いつ？） -------------------- */
+  var WEEKDAY_LABELS = ["にち", "げつ", "か", "すい", "もく", "きん", "ど"];
+
+  function buildCalendar() {
+    var wrap = document.getElementById("date-calendar");
+    wrap.innerHTML = "";
+    var grid = document.createElement("div");
+    grid.style.display = "grid";
+    grid.style.gridTemplateColumns = "repeat(7, 1fr)";
+    grid.style.gap = "8px";
+
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (var i = 0; i < 21; i++) {
+      var d = new Date(today);
+      d.setDate(today.getDate() + i);
+      var iso = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+
       var btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "hiroba-stamp hiroba-stamp-btn";
-      btn.innerHTML = '<span style="font-size:30px;">' + p.emoji + '</span><span style="font-size:14px;">' + p.label + '</span>';
+      btn.className = "hiroba-calendar-day" + (i === 0 ? " is-today" : "");
+      btn.innerHTML = '<span class="wd">' + WEEKDAY_LABELS[d.getDay()] + '</span><span class="dd">' + d.getDate() + '</span>';
+      btn.dataset.date = iso;
       btn.addEventListener("click", function () {
-        var isSame = selectedPhrase === p.label;
-        wrap.querySelectorAll(".hiroba-stamp").forEach(function (el) {
+        grid.querySelectorAll(".hiroba-calendar-day").forEach(function (el) {
           el.classList.remove("is-selected");
         });
-        if (isSame) {
-          selectedPhrase = "";
-        } else {
-          selectedPhrase = p.label;
-          btn.classList.add("is-selected");
-        }
+        this.classList.add("is-selected");
+        selectedDate = this.dataset.date;
+        document.getElementById("date-error").textContent = "";
+        goToStep("time");
       });
-      wrap.appendChild(btn);
-    });
+      grid.appendChild(btn);
+    }
+    wrap.appendChild(grid);
   }
-  buildPhraseGrid();
 
-  /* -------------------- ボイスメモ録音（Web Audio / MediaRecorder） -------------------- */
+  /* -------------------- Step2: じかんたい -------------------- */
+  document.querySelectorAll("[data-time-frame]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("[data-time-frame]").forEach(function (el) {
+        el.classList.remove("is-selected");
+      });
+      btn.classList.add("is-selected");
+      selectedTimeFrame = btn.getAttribute("data-time-frame");
+      goToStep("location");
+    });
+  });
+
+  /* -------------------- Step3: どこで？ -------------------- */
+  document.querySelectorAll("[data-location]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll("[data-location]").forEach(function (el) {
+        el.classList.remove("is-selected");
+      });
+      btn.classList.add("is-selected");
+      selectedLocation = btn.getAttribute("data-location");
+      document.getElementById("location-voice-wrap").style.display =
+        selectedLocation === "other" ? "block" : "none";
+    });
+  });
+
+  /* -------------------- モーダル制御 -------------------- */
+  var modal = document.getElementById("promise-modal");
+  var stepDate = document.getElementById("promise-step-date");
+  var stepTime = document.getElementById("promise-step-time");
+  var stepLocation = document.getElementById("promise-step-location");
+  var stepSent = document.getElementById("promise-step-sent");
+
+  function goToStep(step) {
+    stepDate.style.display = step === "date" ? "block" : "none";
+    stepTime.style.display = step === "time" ? "block" : "none";
+    stepLocation.style.display = step === "location" ? "block" : "none";
+    stepSent.style.display = step === "sent" ? "block" : "none";
+  }
+
+  function resetModal() {
+    selectedDate = null;
+    selectedTimeFrame = null;
+    selectedLocation = null;
+    audioBlob = null;
+    audioChunks = [];
+    document.getElementById("promise-error").textContent = "";
+    document.getElementById("date-error").textContent = "";
+    document.getElementById("promise-voice-playback").style.display = "none";
+    document.getElementById("promise-mic-status").textContent = "タップして ろくおん かいし！";
+    document.getElementById("location-voice-wrap").style.display = "none";
+    document.querySelectorAll("[data-time-frame],[data-location],.hiroba-calendar-day").forEach(function (el) {
+      el.classList.remove("is-selected");
+    });
+    goToStep("date");
+  }
+
+  document.getElementById("open-promise-btn").addEventListener("click", function () {
+    resetModal();
+    modal.style.display = "flex";
+  });
+  document.getElementById("promise-cancel-btn-1").addEventListener("click", function () {
+    modal.style.display = "none";
+  });
+  document.getElementById("promise-back-btn-2").addEventListener("click", function () {
+    goToStep("date");
+  });
+  document.getElementById("promise-back-btn-3").addEventListener("click", function () {
+    goToStep("time");
+  });
+  document.getElementById("promise-close-btn").addEventListener("click", function () {
+    modal.style.display = "none";
+    loadMyPost();
+    loadPromises();
+  });
+
+  /* -------------------- ボイスメモ録音（そのほか用） -------------------- */
   var micBtn = document.getElementById("promise-mic-btn");
   var micStatus = document.getElementById("promise-mic-status");
   var voicePlayback = document.getElementById("promise-voice-playback");
@@ -285,20 +494,28 @@
     voiceAudio.pause();
     voiceAudio.removeAttribute("src");
     voicePlayback.style.display = "none";
-    micStatus.textContent = "ボイスメモで つたえてもいいよ！";
+    micStatus.textContent = "タップして ろくおん かいし！";
   });
 
-  /* -------------------- 約束の送信 -------------------- */
+  /* -------------------- 投稿 -------------------- */
   document.getElementById("promise-submit-btn").addEventListener("click", async function () {
     var errorEl = document.getElementById("promise-error");
     errorEl.textContent = "";
 
-    if (!selectedPhrase && !audioBlob) {
-      errorEl.textContent = "なにをするか えらぶか、ボイスメモを ろくおんしてね！";
+    if (!selectedDate) {
+      goToStep("date");
       return;
     }
-    if (!selectedFriendId) {
-      errorEl.textContent = "あいてを えらんでね！";
+    if (!selectedTimeFrame) {
+      goToStep("time");
+      return;
+    }
+    if (!selectedLocation) {
+      errorEl.textContent = "どこで あそぶか えらんでね！";
+      return;
+    }
+    if (selectedLocation === "other" && !audioBlob) {
+      errorEl.textContent = "「そのほか」を えらんだときは ボイスメモを ろくおんしてね！";
       return;
     }
 
@@ -309,38 +526,31 @@
 
     try {
       var fd = new FormData();
-      fd.append("receiver_kid_id", selectedFriendId);
-      fd.append("raw_text", selectedPhrase || "");
+      fd.append("date", selectedDate);
+      fd.append("time_frame", selectedTimeFrame);
+      fd.append("location_type", selectedLocation);
       if (audioBlob) {
         var ext = (audioBlob.type && audioBlob.type.indexOf("ogg") !== -1) ? "ogg" : "webm";
-        fd.append("audio", audioBlob, "promise_voice." + ext);
+        fd.append("audio", audioBlob, "location_voice." + ext);
       }
-      await Hiroba.api("/api/promises/create", { method: "POST", body: fd });
+      await Hiroba.api("/api/promises/posts/create", { method: "POST", body: fd });
 
-      stepDetail.style.display = "none";
-      stepSent.style.display = "block";
-      loadPromises();
+      goToStep("sent");
     } catch (e) {
-      errorEl.textContent = e.message || "そうしんに しっぱいしちゃった…";
+      errorEl.textContent = e.message || "とうこうに しっぱいしちゃった…";
     } finally {
       btn.disabled = false;
       btn.innerHTML = originalHtml;
     }
   });
 
-  document.getElementById("promise-cancel-btn-1").addEventListener("click", function () {
-    modal.style.display = "none";
-  });
-  document.getElementById("promise-cancel-btn-2").addEventListener("click", function () {
-    modal.style.display = "none";
-  });
-  document.getElementById("promise-close-btn").addEventListener("click", function () {
-    modal.style.display = "none";
-  });
+  buildCalendar();
 
   Hiroba.requireLogin().then(function (user) {
     if (user) {
+      loadMyPost();
       loadPromises();
+      loadBoard();
     }
   });
 })();

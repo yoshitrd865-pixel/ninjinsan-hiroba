@@ -808,4 +808,43 @@ img, svg {
   border-color: var(--hiroba-orange);
 }
 
+/* ------------------------------------------------------------------
+   おちゃのま：📅 カレンダー（日付タップ選択）
+   ------------------------------------------------------------------ */
+.hiroba-calendar-day {
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 3px solid transparent;
+  border-radius: var(--hiroba-radius);
+  background: var(--hiroba-sky);
+  cursor: pointer;
+  box-shadow: var(--hiroba-shadow);
+  font-family: inherit;
+  color: var(--hiroba-text);
+}
+
+.hiroba-calendar-day .wd {
+  font-size: 11px;
+  color: var(--hiroba-text-soft);
+}
+
+.hiroba-calendar-day .dd {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.hiroba-calendar-day.is-today {
+  background: #FFF3D6;
+}
+
+.hiroba-calendar-day.is-selected {
+  border-color: var(--hiroba-orange);
+  background: var(--hiroba-yellow);
+}
+
+
 
