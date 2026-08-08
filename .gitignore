@@ -7,3 +7,11 @@ engawa.db
 app/static/uploads/*
 !app/static/uploads/.gitkeep
 .DS_Store
+
+# 「ひろば」プロジェクト用
+hiroba/.env
+hiroba/hiroba.db
+hiroba/app/static/uploads/*
+!hiroba/app/static/uploads/.gitkeep
+
+

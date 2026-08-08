@@ -40,7 +40,29 @@ uvicorn app.main:app --reload
 - Render管理画面の Environment Variables に `SECRET_KEY` / `OPENAI_API_KEY` 等を設定してください。
 - 無料プランではファイルシステムが永続化されない場合があるため、本番運用では外部DB（PostgreSQL等）・外部ストレージの利用を推奨します。
 
+### ⚠️ このリポジトリには「ひろば」も同居しています
+
+`hiroba/` ディレクトリに、完全に独立した別アプリ「ひろば」（キッズ向けSNS）があります。
+`render.yaml` には `engawa` と `hiroba` の2つのWebサービスを定義済みですが、
+**Render側の設定方法によって挙動が変わる**ため注意してください。
+
+- このリポジトリを Render の **Blueprint（Infrastructure as Code）** として連携している場合：
+  `render.yaml` の変更を push すれば、Renderが自動検知して `hiroba` サービスも
+  新規作成・デプロイされます。
+- `engawa` サービスを Render管理画面から **手動で「New Web Service」として作成した場合**：
+  その既存サービスは `render.yaml` を参照しないため、push だけでは `hiroba` は
+  デプロイされません。この場合は、Render管理画面で以下の設定を行い、
+  新しいWebサービスを手動で作成してください。
+  - 同じGitHubリポジトリを選択
+  - Root Directory: `hiroba`
+  - Build Command: `pip install -r requirements.txt`
+  - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+  - Environment Variables: `HIROBA_SECRET_KEY`（任意の値） / `OPENAI_API_KEY`（任意）
+
+詳細は `hiroba/README.md` を参照してください。
+
 ## 将来の拡張
+
 
 - 音声認識AI（Speech-to-Text）を使った文字入力不要の投稿・会話（`app/services/` にサービスを追加する想定）
 - Twilio以外のSMSプロバイダ対応
