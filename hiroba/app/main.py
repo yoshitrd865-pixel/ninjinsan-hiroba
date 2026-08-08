@@ -21,7 +21,8 @@ load_dotenv()
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.database import init_db
@@ -46,7 +47,7 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 # 静的ファイル（CSS / JS / 音 / アップロード画像・音声）
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Jinja2テンプレート（kids/ ・ parent/ の2系統）
+# Jinja2テンプレート（kids/ ・ parent/ ・ auth/ の3系統）
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # APIルーターの登録
@@ -61,6 +62,20 @@ def on_startup():
 
 
 # ------------------------------------------------------------------
+# ログイン・キッズ選択ページ（保護者は電話番号＋認証コード、
+# キッズはアイコンをワンタップで選ぶだけのUI）
+# ------------------------------------------------------------------
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("auth/login.html", {"request": request})
+
+
+@app.get("/select-kid", response_class=HTMLResponse)
+async def select_kid_page(request: Request):
+    return templates.TemplateResponse("auth/select_kid.html", {"request": request})
+
+
+# ------------------------------------------------------------------
 # キッズ向けページ
 # ------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
@@ -71,13 +86,54 @@ async def root():
 
 @app.get("/kids/home", response_class=HTMLResponse)
 async def kids_home(request: Request):
-    """キッズ向けホーム画面（特大ボタンで撮影・お絵描き・録音へ）"""
+    """「みんなのひろば」タイムライン画面（お絵描き・写真・ボイスメモ・リアクション）"""
     context = {
         "request": request,
         "active": "home",
         "app_name": "ひろば",
     }
     return templates.TemplateResponse("kids/home.html", context)
+
+
+@app.get("/kids/create", response_class=HTMLResponse)
+async def kids_create(request: Request):
+    """作品・ボイス投稿画面（お絵描き・ボイスメモ・気分スタンプ）"""
+    context = {
+        "request": request,
+        "active": "create",
+        "app_name": "ひろば",
+    }
+    return templates.TemplateResponse("kids/create.html", context)
+
+
+@app.get("/kids/ochanoma", response_class=HTMLResponse)
+async def kids_ochanoma(request: Request):
+    """おちゃのま（今後実装予定：みんなとおしゃべりする場所）"""
+    context = {
+        "request": request,
+        "active": "ochanoma",
+        "app_name": "ひろば",
+        "emoji": "🍵",
+        "title": "おちゃのま",
+        "message": "おちゃのまは じゅんびちゅうだよ！\nもうすこし まっててね。",
+    }
+    return templates.TemplateResponse("kids/coming_soon.html", context)
+
+
+@app.get("/kids/oyako", response_class=HTMLResponse)
+async def kids_oyako(request: Request):
+    """おうちひと（保護者ページへの案内。まだこの画面自体は簡易表示）"""
+    context = {
+        "request": request,
+        "active": "oyako",
+        "app_name": "ひろば",
+        "emoji": "👨‍👩‍👧",
+        "title": "おうちのひと",
+        "message": "おうちの人と いっしょに みてね！",
+        "action_url": "/parent",
+        "action_label": "ほごしゃ用ページを ひらく",
+    }
+    return templates.TemplateResponse("kids/coming_soon.html", context)
 
 
 # ------------------------------------------------------------------
@@ -99,3 +155,30 @@ async def parent_dashboard(request: Request):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok", "app": "hiroba"}
+
+
+# ------------------------------------------------------------------
+# 404エラーハンドリング
+# ナビゲーションタブや将来のリンク先が未実装でも、キッズ向けには
+# 「準備中だよ！」の仮画面を表示し、素の404エラーにはしない。
+# ------------------------------------------------------------------
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    # APIエンドポイント（/api/...）はこれまで通りJSONでエラーを返す
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+
+    if exc.status_code == 404:
+        context = {
+            "request": request,
+            "active": None,
+            "app_name": "ひろば",
+            "emoji": "🚧",
+            "title": "じゅんびちゅう",
+            "message": "このページは まだ じゅんびちゅうだよ！\n「ひろば」にもどって あそんでね。",
+        }
+        return templates.TemplateResponse(
+            "kids/coming_soon.html", context, status_code=404
+        )
+
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)

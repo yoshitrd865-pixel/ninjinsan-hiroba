@@ -9,7 +9,9 @@
 <body>
   <div class="hiroba-app">
     <header class="hiroba-header">
-      <span class="hiroba-logo">🏞️ ひろば</span>
+      <a href="/kids/home" style="text-decoration:none;">
+        <span class="hiroba-logo">🏞️ ひろば</span>
+      </a>
     </header>
 
     <main class="hiroba-main">
@@ -17,19 +19,27 @@
     </main>
 
     <nav class="hiroba-nav">
-      <a href="/" class="hiroba-nav-item {% if active == 'home' %}is-active{% endif %}">
-        <span class="hiroba-nav-icon">🏠</span>
+      <a href="/kids/home" class="hiroba-nav-item {% if active == 'home' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">&#x1F3DE;&#xFE0F;</span>
+        <span class="hiroba-nav-label">ひろば</span>
       </a>
-      <a href="/post" class="hiroba-nav-item {% if active == 'post' %}is-active{% endif %}">
-        <span class="hiroba-nav-icon">📸</span>
+      <a href="/kids/create" class="hiroba-nav-item {% if active == 'create' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">&#x1F3A8;</span>
+        <span class="hiroba-nav-label">つくる</span>
       </a>
-      <a href="/draw" class="hiroba-nav-item {% if active == 'draw' %}is-active{% endif %}">
-        <span class="hiroba-nav-icon">🎨</span>
+      <a href="/kids/ochanoma" class="hiroba-nav-item {% if active == 'ochanoma' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">&#x1F375;</span>
+        <span class="hiroba-nav-label">おちゃのま</span>
       </a>
-      <a href="/voice" class="hiroba-nav-item {% if active == 'voice' %}is-active{% endif %}">
-        <span class="hiroba-nav-icon">🎤</span>
+      <a href="/kids/oyako" class="hiroba-nav-item {% if active == 'oyako' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">&#x1F46A;</span>
+        <span class="hiroba-nav-label">おうちひと</span>
       </a>
+
     </nav>
   </div>
+
+  <script src="/static/js/kids_common.js"></script>
+  {% block scripts %}{% endblock %}
 </body>
 </html>

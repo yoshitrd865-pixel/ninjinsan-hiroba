@@ -1,0 +1,12 @@
+{% extends "kids/base.html" %}
+
+{% block content %}
+<div class="hiroba-card hiroba-coming-soon">
+  <span class="emoji">{{ emoji|default("🚧") }}</span>
+  <h1>{{ title|default("じゅんびちゅう") }}</h1>
+  <p>{{ message|default("じゅんびちゅうだよ！\nもうすこしまっててね。") }}</p>
+  {% if action_url %}
+  <a class="hiroba-btn hiroba-btn--blue" href="{{ action_url }}">{{ action_label|default("すすむ") }}</a>
+  {% endif %}
+</div>
+{% endblock %}

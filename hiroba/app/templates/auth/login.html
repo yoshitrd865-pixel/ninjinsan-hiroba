@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン - ひろば</title>
+  <link rel="stylesheet" href="/static/css/kids_theme.css">
+</head>
+<body>
+<div class="hiroba-app" style="padding-bottom: 40px;">
+  <header class="hiroba-header">
+    <span class="hiroba-logo">🏞️ ひろば</span>
+  </header>
+
+  <main class="hiroba-main">
+    <div class="hiroba-card hiroba-auth-wrap">
+      <div class="hiroba-auth-title">おうちの人 ログイン</div>
+
+      <!-- STEP 1: 電話番号入力 -->
+      <div id="step-phone">
+        <p style="text-align:center;">でんわばんごうを 入力してください</p>
+        <input id="phone-input" class="hiroba-auth-input" type="tel" inputmode="numeric"
+               placeholder="090-1234-5678" autocomplete="tel">
+        <div id="phone-error" class="hiroba-auth-error"></div>
+        <button id="send-code-btn" class="hiroba-btn hiroba-btn--orange" style="margin-top:16px;">
+          📲 コードを送る
+        </button>
+      </div>
+
+      <!-- STEP 2: 認証コード入力 -->
+      <div id="step-code" style="display:none;">
+        <p style="text-align:center;">おくられた 4けたのコードを入力してね</p>
+        <input id="code-input" class="hiroba-auth-input" type="tel" inputmode="numeric"
+               maxlength="4" placeholder="0000">
+        <div id="code-debug" class="hiroba-auth-debug"></div>
+        <div id="code-error" class="hiroba-auth-error"></div>
+        <button id="verify-code-btn" class="hiroba-btn hiroba-btn--green" style="margin-top:16px;">
+          ✅ ログイン
+        </button>
+        <button id="back-to-phone-btn" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px;">
+          ⬅️ でんわばんごうを やりなおす
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  var phoneNumber = "";
+
+  var phoneInput = document.getElementById("phone-input");
+  var phoneError = document.getElementById("phone-error");
+  var stepPhone = document.getElementById("step-phone");
+  var stepCode = document.getElementById("step-code");
+  var codeInput = document.getElementById("code-input");
+  var codeError = document.getElementById("code-error");
+  var codeDebug = document.getElementById("code-debug");
+
+  document.getElementById("send-code-btn").addEventListener("click", async function () {
+    phoneError.textContent = "";
+    phoneNumber = phoneInput.value.trim();
+    if (!phoneNumber) {
+      phoneError.textContent = "でんわばんごうを 入力してください";
+      return;
+    }
+    try {
+      var fd = new FormData();
+      fd.append("phone_number", phoneNumber);
+      var res = await fetch("/api/auth/send-code", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "送信に失敗しました");
+
+      stepPhone.style.display = "none";
+      stepCode.style.display = "block";
+      codeDebug.textContent = data.debug_code ? ("（かいはつ用）コード: " + data.debug_code) : "";
+      codeInput.value = "";
+      codeInput.focus();
+    } catch (e) {
+      phoneError.textContent = e.message;
+    }
+  });
+
+  document.getElementById("back-to-phone-btn").addEventListener("click", function () {
+    stepCode.style.display = "none";
+    stepPhone.style.display = "block";
+    codeError.textContent = "";
+  });
+
+  document.getElementById("verify-code-btn").addEventListener("click", async function () {
+    codeError.textContent = "";
+    var code = codeInput.value.trim();
+    if (!code) {
+      codeError.textContent = "コードを 入力してください";
+      return;
+    }
+    try {
+      var fd = new FormData();
+      fd.append("phone_number", phoneNumber);
+      fd.append("code", code);
+      var res = await fetch("/api/auth/verify-code", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "コードが正しくありません");
+      window.location.href = "/select-kid";
+    } catch (e) {
+      codeError.textContent = e.message;
+    }
+  });
+</script>
+</body>
+</html>

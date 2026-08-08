@@ -1,0 +1,394 @@
+{% extends "kids/base.html" %}
+
+{% block content %}
+<div class="hiroba-card">
+  <div class="hiroba-section-title">🎨 おえかき</div>
+  <div class="hiroba-canvas-wrap">
+    <canvas id="hiroba-draw-canvas" height="320"></canvas>
+  </div>
+  <div class="hiroba-palette-row" id="color-palette"></div>
+  <div class="hiroba-palette-row">
+    <div class="hiroba-brush-sizes" id="brush-sizes"></div>
+    <button type="button" id="eraser-btn" class="hiroba-tool-btn">🧹 けしごむ</button>
+    <button type="button" id="clear-btn" class="hiroba-tool-btn hiroba-tool-btn--danger">🗑️ ぜんぶけす</button>
+  </div>
+</div>
+
+<div class="hiroba-card">
+  <div class="hiroba-section-title">📷 しゃしん（にんい）</div>
+  <input type="file" id="photo-input" accept="image/*" style="display:none;">
+  <button type="button" id="photo-pick-btn" class="hiroba-btn hiroba-btn--blue">📷 しゃしんをえらぶ</button>
+  <img id="photo-preview" class="hiroba-photo-preview" style="display:none;">
+  <button type="button" id="photo-remove-btn" class="hiroba-btn hiroba-btn--pink" style="display:none; margin-top:10px;">❌ しゃしんをやめる</button>
+</div>
+
+<div class="hiroba-card">
+  <div class="hiroba-section-title">🎤 ボイスメモ</div>
+  <button type="button" id="mic-btn" class="hiroba-mic-btn">🎤</button>
+  <div class="hiroba-mic-status" id="mic-status">タップして ろくおん かいし！</div>
+  <div class="hiroba-voice-playback" id="voice-playback" style="display:none;">
+    <button type="button" id="voice-play-btn" class="hiroba-audio-play-btn">▶️</button>
+    <button type="button" id="voice-redo-btn" class="hiroba-tool-btn">🔁 やりなおす</button>
+    <audio id="voice-audio"></audio>
+  </div>
+</div>
+
+<div class="hiroba-card">
+  <div class="hiroba-section-title">😆 きもちスタンプ</div>
+  <div class="hiroba-stamp-picker" id="stamp-picker"></div>
+</div>
+
+<button type="button" id="submit-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--orange hiroba-submit-btn">
+  <span class="hiroba-btn-icon">📮</span> とうこうする！
+</button>
+<div id="submit-error" class="hiroba-auth-error"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  /* -------------------- お絵描きキャンバス -------------------- */
+  var canvas = document.getElementById("hiroba-draw-canvas");
+  var ctx = canvas.getContext("2d");
+  var drawing = false;
+  var hasDrawn = false;
+  var currentColor = "#4A4A4A";
+  var currentSize = 8;
+  var eraserMode = false;
+
+  var COLORS = ["#4A4A4A", "#FF6B6B", "#FF9F45", "#FFC93C", "#6BCB77", "#4D96FF", "#9B72FF", "#FF6F91"];
+  var SIZES = [{ label: "S", size: 4 }, { label: "M", size: 10 }, { label: "L", size: 20 }];
+
+  function resizeCanvas() {
+    var wrap = canvas.parentElement;
+    var width = wrap.clientWidth;
+    var prevData = null;
+    if (canvas.width > 0 && canvas.height > 0) {
+      prevData = canvas.toDataURL();
+    }
+    canvas.width = width;
+    canvas.height = 320;
+    fillWhite();
+    if (prevData) {
+      var img = new Image();
+      img.onload = function () {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = prevData;
+    }
+  }
+
+  function fillWhite() {
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function buildColorPalette() {
+    var wrap = document.getElementById("color-palette");
+    COLORS.forEach(function (color, i) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hiroba-color-swatch" + (i === 0 ? " is-selected" : "");
+      btn.style.backgroundColor = color;
+      btn.addEventListener("click", function () {
+        currentColor = color;
+        eraserMode = false;
+        document.getElementById("eraser-btn").classList.remove("is-selected");
+        wrap.querySelectorAll(".hiroba-color-swatch").forEach(function (el) {
+          el.classList.remove("is-selected");
+        });
+        btn.classList.add("is-selected");
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function buildBrushSizes() {
+    var wrap = document.getElementById("brush-sizes");
+    SIZES.forEach(function (s, i) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hiroba-brush-size-btn" + (i === 1 ? " is-selected" : "");
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      dot.style.width = (8 + i * 6) + "px";
+      dot.style.height = (8 + i * 6) + "px";
+      btn.appendChild(dot);
+      btn.addEventListener("click", function () {
+        currentSize = s.size;
+        wrap.querySelectorAll(".hiroba-brush-size-btn").forEach(function (el) {
+          el.classList.remove("is-selected");
+        });
+        btn.classList.add("is-selected");
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function getPos(evt) {
+    var rect = canvas.getBoundingClientRect();
+    var x, y;
+    if (evt.touches && evt.touches.length) {
+      x = evt.touches[0].clientX - rect.left;
+      y = evt.touches[0].clientY - rect.top;
+    } else {
+      x = evt.clientX - rect.left;
+      y = evt.clientY - rect.top;
+    }
+    return { x: x, y: y };
+  }
+
+  function startDraw(evt) {
+    evt.preventDefault();
+    drawing = true;
+    hasDrawn = true;
+    var pos = getPos(evt);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function moveDraw(evt) {
+    if (!drawing) return;
+    evt.preventDefault();
+    var pos = getPos(evt);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = currentSize;
+    ctx.strokeStyle = eraserMode ? "#FFFFFF" : currentColor;
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function endDraw(evt) {
+    if (!drawing) return;
+    drawing = false;
+    ctx.closePath();
+  }
+
+  function setupCanvasEvents() {
+    canvas.addEventListener("mousedown", startDraw);
+    canvas.addEventListener("mousemove", moveDraw);
+    canvas.addEventListener("mouseup", endDraw);
+    canvas.addEventListener("mouseleave", endDraw);
+    canvas.addEventListener("touchstart", startDraw, { passive: false });
+    canvas.addEventListener("touchmove", moveDraw, { passive: false });
+    canvas.addEventListener("touchend", endDraw);
+  }
+
+  document.getElementById("eraser-btn").addEventListener("click", function () {
+    eraserMode = !eraserMode;
+    this.classList.toggle("is-selected", eraserMode);
+  });
+
+  document.getElementById("clear-btn").addEventListener("click", function () {
+    fillWhite();
+    hasDrawn = false;
+  });
+
+  buildColorPalette();
+  buildBrushSizes();
+  setupCanvasEvents();
+  window.addEventListener("resize", resizeCanvas);
+  setTimeout(resizeCanvas, 0);
+
+  /* -------------------- 写真アップロード -------------------- */
+  var photoInput = document.getElementById("photo-input");
+  var photoPreview = document.getElementById("photo-preview");
+  var photoFile = null;
+
+  document.getElementById("photo-pick-btn").addEventListener("click", function () {
+    photoInput.click();
+  });
+
+  photoInput.addEventListener("change", function () {
+    var file = photoInput.files && photoInput.files[0];
+    if (!file) return;
+    photoFile = file;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      photoPreview.src = e.target.result;
+      photoPreview.style.display = "block";
+      document.getElementById("photo-remove-btn").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("photo-remove-btn").addEventListener("click", function () {
+    photoFile = null;
+    photoInput.value = "";
+    photoPreview.style.display = "none";
+    this.style.display = "none";
+  });
+
+  /* -------------------- ボイスメモ録音 -------------------- */
+  var micBtn = document.getElementById("mic-btn");
+  var micStatus = document.getElementById("mic-status");
+  var voicePlayback = document.getElementById("voice-playback");
+  var voiceAudio = document.getElementById("voice-audio");
+  var voicePlayBtn = document.getElementById("voice-play-btn");
+  var voiceRedoBtn = document.getElementById("voice-redo-btn");
+
+  var mediaRecorder = null;
+  var audioChunks = [];
+  var audioBlob = null;
+  var isRecording = false;
+  var mediaStream = null;
+
+  function pickMimeType() {
+    var candidates = ["audio/webm", "audio/ogg", "audio/mp4"];
+    for (var i = 0; i < candidates.length; i++) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(candidates[i])) {
+        return candidates[i];
+      }
+    }
+    return "";
+  }
+
+  micBtn.addEventListener("click", async function () {
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      micStatus.textContent = "このブラウザではろくおんできないよ…";
+      return;
+    }
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      var mimeType = pickMimeType();
+      mediaRecorder = mimeType ? new MediaRecorder(mediaStream, { mimeType: mimeType }) : new MediaRecorder(mediaStream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = function (e) {
+        if (e.data && e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = function () {
+        audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
+        voiceAudio.src = URL.createObjectURL(audioBlob);
+        voicePlayback.style.display = "flex";
+        micBtn.textContent = "🎤";
+        micBtn.classList.remove("is-recording");
+        micStatus.textContent = "ろくおん できたよ！ きいてみよう";
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(function (t) { t.stop(); });
+        }
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      micBtn.textContent = "⏹️";
+      micBtn.classList.add("is-recording");
+      micStatus.textContent = "ろくおんちゅう… タップでとめる";
+    } catch (err) {
+      micStatus.textContent = "マイクがつかえなかったよ…";
+    }
+  });
+
+  function stopRecording() {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      isRecording = false;
+    }
+  }
+
+  voicePlayBtn.addEventListener("click", function () {
+    if (voiceAudio.paused) {
+      voiceAudio.play();
+      voicePlayBtn.textContent = "⏸️";
+    } else {
+      voiceAudio.pause();
+      voicePlayBtn.textContent = "▶️";
+    }
+  });
+  voiceAudio.addEventListener("ended", function () {
+    voicePlayBtn.textContent = "▶️";
+  });
+
+  voiceRedoBtn.addEventListener("click", function () {
+    audioBlob = null;
+    audioChunks = [];
+    voiceAudio.pause();
+    voiceAudio.removeAttribute("src");
+    voicePlayback.style.display = "none";
+    micStatus.textContent = "タップして ろくおん かいし！";
+  });
+
+  /* -------------------- 気分スタンプ -------------------- */
+  var STAMPS = [
+    { emoji: "🎉", label: "できた！" },
+    { emoji: "😆", label: "たのしい！" },
+    { emoji: "👀", label: "みてみて！" },
+    { emoji: "😊", label: "うれしい！" },
+    { emoji: "😲", label: "びっくり！" }
+  ];
+  var selectedStamp = null;
+
+  function buildStampPicker() {
+    var wrap = document.getElementById("stamp-picker");
+    STAMPS.forEach(function (s) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hiroba-stamp hiroba-stamp-btn";
+      btn.innerHTML = '<span style="font-size:34px;">' + s.emoji + '</span><span>' + s.label + '</span>';
+      btn.addEventListener("click", function () {
+        var isSame = selectedStamp === (s.emoji + " " + s.label);
+        wrap.querySelectorAll(".hiroba-stamp").forEach(function (el) {
+          el.classList.remove("is-selected");
+        });
+        if (isSame) {
+          selectedStamp = null;
+        } else {
+          selectedStamp = s.emoji + " " + s.label;
+          btn.classList.add("is-selected");
+        }
+      });
+      wrap.appendChild(btn);
+    });
+  }
+  buildStampPicker();
+
+  /* -------------------- 投稿 -------------------- */
+  var submitBtn = document.getElementById("submit-btn");
+  var submitError = document.getElementById("submit-error");
+
+  submitBtn.addEventListener("click", async function () {
+    submitError.textContent = "";
+
+    if (!hasDrawn && !photoFile && !audioBlob && !selectedStamp) {
+      submitError.textContent = "おえかき・しゃしん・ボイスメモ・スタンプの どれかを えらんでね！";
+      return;
+    }
+
+    submitBtn.disabled = true;
+    var originalHtml = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="hiroba-btn-icon">⏳</span> とうこうちゅう…';
+
+    try {
+      var fd = new FormData();
+      fd.append("stamps", selectedStamp || "");
+      if (hasDrawn) {
+        fd.append("drawing_data", canvas.toDataURL("image/png"));
+      }
+      if (photoFile) {
+        fd.append("image", photoFile, photoFile.name || "photo.png");
+      }
+      if (audioBlob) {
+        var ext = (audioBlob.type && audioBlob.type.indexOf("ogg") !== -1) ? "ogg" : "webm";
+        fd.append("audio", audioBlob, "voice." + ext);
+      }
+
+      await Hiroba.api("/api/posts/create", { method: "POST", body: fd });
+      window.location.href = "/kids/home";
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      submitError.textContent = e.message || "とうこうに しっぱいしちゃった…";
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalHtml;
+    }
+  });
+
+  Hiroba.requireLogin();
+})();
+</script>
+{% endblock %}

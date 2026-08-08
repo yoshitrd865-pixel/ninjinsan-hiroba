@@ -1,21 +1,174 @@
 {% extends "kids/base.html" %}
 
 {% block content %}
-<div class="hiroba-card">
-  <div class="hiroba-btn hiroba-btn--xl hiroba-btn--orange">
-    <span class="hiroba-btn-icon">📸</span> しゃしんをとる
-  </div>
+<div id="timeline-root">
+  <div class="hiroba-loading">よみこみちゅう… 🌀</div>
 </div>
+{% endblock %}
 
-<div class="hiroba-card">
-  <div class="hiroba-btn hiroba-btn--xl hiroba-btn--purple">
-    <span class="hiroba-btn-icon">🎨</span> おえかきする
-  </div>
-</div>
+{% block scripts %}
+<script>
+(function () {
+  var REACTIONS = [
+    { type: "yabai", emoji: "🔥", label: "やばい！" },
+    { type: "omoshiroi", emoji: "🤣", label: "おもしろい！" },
+    { type: "sugoi", emoji: "👏", label: "すごい！" },
+    { type: "suteki", emoji: "⭐", label: "すてき！" }
+  ];
 
-<div class="hiroba-card">
-  <div class="hiroba-btn hiroba-btn--xl hiroba-btn--green">
-    <span class="hiroba-btn-icon">🎤</span> おはなしをろくおん
-  </div>
-</div>
+  function renderPost(post) {
+    var mediaHtml = "";
+    if (post.drawing_url) {
+      mediaHtml += '<img class="hiroba-card-media" src="' + post.drawing_url + '" alt="おえかき">';
+    }
+    if (post.photo_url) {
+      mediaHtml += '<img class="hiroba-card-media" src="' + post.photo_url + '" alt="しゃしん">';
+    }
+    if (mediaHtml) {
+      mediaHtml = '<div class="hiroba-post-media-wrap">' + mediaHtml + '</div>';
+    }
+
+    var audioHtml = "";
+    if (post.voice_memo_url) {
+      audioHtml =
+        '<div class="hiroba-audio-player">' +
+        '  <button type="button" class="hiroba-audio-play-btn">▶️</button>' +
+        '  <span class="hiroba-audio-label">🎤 ボイスメモ</span>' +
+        '  <audio src="' + post.voice_memo_url + '" preload="none"></audio>' +
+        '</div>';
+    }
+
+    var moodHtml = "";
+    if (post.mood_stamp) {
+      moodHtml = '<span class="hiroba-post-mood">' + Hiroba.escapeHtml(post.mood_stamp) + '</span>';
+    }
+
+    var reactionsHtml = REACTIONS.map(function (r) {
+      var count = (post.reactions && post.reactions[r.type]) || 0;
+      return (
+        '<button type="button" class="hiroba-reaction-btn hiroba-reaction-btn--' + r.type + '" data-reaction-type="' + r.type + '">' +
+        '  <span class="emoji">' + r.emoji + '</span>' +
+        '  <span class="count">' + count + '</span>' +
+        '  <span class="hiroba-reaction-label">' + r.label + '</span>' +
+        '</button>'
+      );
+    }).join("");
+
+    return (
+      '<div class="hiroba-card hiroba-post-card hiroba-fade-in" data-post-id="' + post.id + '">' +
+      '  <div class="hiroba-post-header">' +
+      '    <div class="hiroba-post-avatar">' + (post.author_avatar || "🧒") + '</div>' +
+      '    <div>' +
+      '      <div class="hiroba-post-author">' + Hiroba.escapeHtml(post.author_name) + '</div>' +
+      '      <div class="hiroba-post-time">' + post.created_at + '</div>' +
+      '    </div>' +
+      '    ' + moodHtml +
+      '  </div>' +
+      '  ' + mediaHtml +
+      '  ' + audioHtml +
+      '  <div class="hiroba-reaction-bar hiroba-reaction-bar--grid">' + reactionsHtml + '</div>' +
+      '</div>'
+    );
+  }
+
+  function attachHandlers(root) {
+    root.querySelectorAll(".hiroba-reaction-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        onReactionClick(btn);
+      });
+    });
+
+    root.querySelectorAll(".hiroba-audio-play-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        onAudioPlayClick(btn);
+      });
+    });
+  }
+
+  function onAudioPlayClick(btn) {
+    var audio = btn.parentElement.querySelector("audio");
+    if (!audio) return;
+    if (audio.paused) {
+      document.querySelectorAll("audio").forEach(function (a) {
+        if (a !== audio) {
+          a.pause();
+        }
+      });
+      document.querySelectorAll(".hiroba-audio-play-btn").forEach(function (b) {
+        if (b !== btn) b.textContent = "▶️";
+      });
+      audio.play();
+      btn.textContent = "⏸️";
+    } else {
+      audio.pause();
+      btn.textContent = "▶️";
+    }
+    audio.onended = function () {
+      btn.textContent = "▶️";
+    };
+  }
+
+  async function onReactionClick(btn) {
+    var card = btn.closest(".hiroba-post-card");
+    var postId = card.getAttribute("data-post-id");
+    var reactionType = btn.getAttribute("data-reaction-type");
+
+    Hiroba.bounce(btn);
+    var countEl = btn.querySelector(".count");
+    var current = parseInt(countEl.textContent || "0", 10);
+    countEl.textContent = current + 1;
+    Hiroba.bump(countEl);
+
+    try {
+      var fd = new FormData();
+      fd.append("reaction_type", reactionType);
+      var data = await Hiroba.api("/api/posts/" + postId + "/react", { method: "POST", body: fd });
+      REACTIONS.forEach(function (r) {
+        var el = card.querySelector('[data-reaction-type="' + r.type + '"] .count');
+        if (el && data.reactions) {
+          el.textContent = data.reactions[r.type];
+        }
+      });
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+      }
+    }
+  }
+
+  async function loadTimeline() {
+    var root = document.getElementById("timeline-root");
+    try {
+      var data = await Hiroba.api("/api/posts/timeline");
+      var posts = (data && data.posts) || [];
+      if (posts.length === 0) {
+        root.innerHTML =
+          '<div class="hiroba-card hiroba-empty-state">' +
+          '  <span class="emoji">📭</span>' +
+          '  まだとうこうがないよ！<br>「つくる」からとうこうしてみよう！' +
+          '</div>';
+        return;
+      }
+      root.innerHTML = posts.map(renderPost).join("");
+      attachHandlers(root);
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      root.innerHTML =
+        '<div class="hiroba-card hiroba-empty-state">' +
+        '  <span class="emoji">😢</span>' +
+        '  よみこみに しっぱいしちゃった…' +
+        '</div>';
+    }
+  }
+
+  Hiroba.requireLogin().then(function (user) {
+    if (user) {
+      loadTimeline();
+    }
+  });
+})();
+</script>
 {% endblock %}

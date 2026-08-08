@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>キッズをえらぶ - ひろば</title>
+  <link rel="stylesheet" href="/static/css/kids_theme.css">
+</head>
+<body>
+<div class="hiroba-app" style="padding-bottom: 40px;">
+  <header class="hiroba-header">
+    <span class="hiroba-logo">🏞️ ひろば</span>
+  </header>
+
+  <main class="hiroba-main">
+    <div class="hiroba-card">
+      <div class="hiroba-auth-title" style="font-size:24px;">だれが つかう？</div>
+      <div id="kid-grid" class="hiroba-kid-grid" style="margin-top:20px;">
+        <div class="hiroba-loading">よみこみちゅう…</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- PIN入力モーダル -->
+<div id="pin-modal" class="hiroba-modal-overlay" style="display:none;">
+  <div class="hiroba-modal">
+    <div style="text-align:center; font-size:20px; font-weight:700;">4けたの PIN を入力</div>
+    <input id="pin-input" class="hiroba-auth-input" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+    <div id="pin-error" class="hiroba-auth-error"></div>
+    <button id="pin-submit-btn" class="hiroba-btn hiroba-btn--green">すすむ</button>
+    <button id="pin-cancel-btn" class="hiroba-btn hiroba-btn--pink">やめる</button>
+  </div>
+</div>
+
+<!-- キッズ追加モーダル -->
+<div id="add-kid-modal" class="hiroba-modal-overlay" style="display:none;">
+  <div class="hiroba-modal">
+    <div style="text-align:center; font-size:20px; font-weight:700;">キッズを ついか</div>
+    <input id="kid-name-input" class="hiroba-auth-input" type="text" placeholder="なまえ（たろう など）">
+    <div class="hiroba-emoji-grid" id="emoji-grid"></div>
+    <div id="add-kid-error" class="hiroba-auth-error"></div>
+    <button id="add-kid-submit-btn" class="hiroba-btn hiroba-btn--orange">ついかする</button>
+    <button id="add-kid-cancel-btn" class="hiroba-btn hiroba-btn--pink">やめる</button>
+  </div>
+</div>
+
+<script>
+  var AVATAR_EMOJIS = ["🐱", "🐶", "🐰", "🦊", "🐻", "🐼", "🦁", "🐸", "🐵", "🐨", "🐯", "🦄"];
+  var selectedEmoji = AVATAR_EMOJIS[0];
+  var pendingKidId = null;
+
+  async function loadKids() {
+    try {
+      var res = await fetch("/api/auth/kids");
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "取得に失敗しました");
+      renderGrid(data.kids || []);
+    } catch (e) {
+      window.location.href = "/login";
+    }
+  }
+
+  function renderGrid(kids) {
+    var grid = document.getElementById("kid-grid");
+    grid.innerHTML = "";
+    kids.forEach(function (kid) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hiroba-kid-avatar-btn";
+      btn.innerHTML =
+        '<div class="hiroba-kid-avatar-circle">' + (kid.avatar_icon || "🧒") + '</div>' +
+        '<div class="hiroba-kid-name">' + kid.display_name + '</div>';
+      btn.addEventListener("click", function () {
+        selectKid(kid);
+      });
+      grid.appendChild(btn);
+    });
+
+    var addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.className = "hiroba-kid-avatar-btn hiroba-kid-add-btn";
+    addBtn.innerHTML =
+      '<div class="hiroba-kid-avatar-circle">＋</div>' +
+      '<div class="hiroba-kid-name">ついか</div>';
+    addBtn.addEventListener("click", openAddKidModal);
+    grid.appendChild(addBtn);
+  }
+
+  function selectKid(kid) {
+    if (kid.has_pin) {
+      pendingKidId = kid.id;
+      document.getElementById("pin-input").value = "";
+      document.getElementById("pin-error").textContent = "";
+      document.getElementById("pin-modal").style.display = "flex";
+    } else {
+      doSelectKid(kid.id, "");
+    }
+  }
+
+  async function doSelectKid(kidId, pin) {
+    try {
+      var fd = new FormData();
+      fd.append("pin_code", pin);
+      var res = await fetch("/api/auth/kids/" + kidId + "/select", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "えらべませんでした");
+      window.location.href = "/kids/home";
+    } catch (e) {
+      document.getElementById("pin-error").textContent = e.message;
+    }
+  }
+
+  document.getElementById("pin-submit-btn").addEventListener("click", function () {
+    var pin = document.getElementById("pin-input").value.trim();
+    if (pendingKidId) doSelectKid(pendingKidId, pin);
+  });
+
+  document.getElementById("pin-cancel-btn").addEventListener("click", function () {
+    document.getElementById("pin-modal").style.display = "none";
+  });
+
+  function openAddKidModal() {
+    document.getElementById("kid-name-input").value = "";
+    document.getElementById("add-kid-error").textContent = "";
+    var emojiGrid = document.getElementById("emoji-grid");
+    emojiGrid.innerHTML = "";
+    AVATAR_EMOJIS.forEach(function (emoji) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "hiroba-emoji-choice" + (emoji === selectedEmoji ? " is-selected" : "");
+      b.textContent = emoji;
+      b.addEventListener("click", function () {
+        selectedEmoji = emoji;
+        emojiGrid.querySelectorAll(".hiroba-emoji-choice").forEach(function (el) {
+          el.classList.remove("is-selected");
+        });
+        b.classList.add("is-selected");
+      });
+      emojiGrid.appendChild(b);
+    });
+    document.getElementById("add-kid-modal").style.display = "flex";
+  }
+
+  document.getElementById("add-kid-cancel-btn").addEventListener("click", function () {
+    document.getElementById("add-kid-modal").style.display = "none";
+  });
+
+  document.getElementById("add-kid-submit-btn").addEventListener("click", async function () {
+    var name = document.getElementById("kid-name-input").value.trim();
+    var errorEl = document.getElementById("add-kid-error");
+    if (!name) {
+      errorEl.textContent = "なまえを 入力してください";
+      return;
+    }
+    try {
+      var fd = new FormData();
+      fd.append("display_name", name);
+      fd.append("avatar_icon", selectedEmoji);
+      var res = await fetch("/api/auth/kids/add", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "ついかに しっぱいしました");
+      document.getElementById("add-kid-modal").style.display = "none";
+      loadKids();
+    } catch (e) {
+      errorEl.textContent = e.message;
+    }
+  });
+
+  loadKids();
+</script>
+</body>
+</html>
