@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}みんなの縁側 - 縁側（えんがわ）{% endblock %}
+
+{% block content %}
+<div class="page page--timeline">
+
+  <h1 class="page-title">🌐 みんなの縁側</h1>
+  <p class="timeline-lead">みんなの投稿が新着順にならんでいます。<br>気持ちが届いたら反応してあげましょう。</p>
+
+  {% if timeline_posts %}
+    <ul class="global-timeline-list" id="global-timeline-list">
+      {% for post in timeline_posts %}
+      <li class="global-post-card" data-post-id="{{ post.id }}">
+        <div class="global-post-card__header">
+          <span class="global-post-card__author">
+            {% if post.is_mine %}あなた{% else %}{{ post.author_name }}さん{% endif %}
+          </span>
+          <span class="global-post-card__time">{{ post.time_label }}</span>
+        </div>
+
+        {% if post.image_path %}
+        <img class="global-post-card__photo" src="{{ post.image_path }}" alt="投稿写真">
+        {% endif %}
+
+        <p class="global-post-card__stamp">{{ post.stamp }} {{ post.stamp_label }}</p>
+
+        <div class="global-post-card__reactions">
+          <button
+            type="button"
+            class="reaction-btn reaction-btn--warm {% if post.reacted_warm %}reaction-btn--active{% endif %}"
+            data-post-id="{{ post.id }}"
+            data-reaction-type="warm"
+          >
+            <span class="reaction-btn__icon">🌸</span>
+            <span class="reaction-btn__label">温かいね</span>
+            <span class="reaction-btn__count">{{ post.warm_count }}</span>
+          </button>
+          <button
+            type="button"
+            class="reaction-btn reaction-btn--cheer {% if post.reacted_cheer %}reaction-btn--active{% endif %}"
+            data-post-id="{{ post.id }}"
+            data-reaction-type="cheer"
+          >
+            <span class="reaction-btn__icon">📣</span>
+            <span class="reaction-btn__label">応援する</span>
+            <span class="reaction-btn__count">{{ post.cheer_count }}</span>
+          </button>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="timeline-empty">まだ投稿がありません。マイページから投稿してみましょう！</p>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.Engawa && window.Engawa.initTimelinePage) {
+      window.Engawa.initTimelinePage();
+    }
+  });
+</script>
+{% endblock %}

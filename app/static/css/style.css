@@ -1101,11 +1101,113 @@ button, input {
 }
 
 
+/* =========================================================
+   みんなの縁側（グローバルタイムライン）
+   ========================================================= */
+.timeline-lead {
+  text-align: center;
+  font-size: 1.05rem;
+  color: var(--color-text-light);
+  margin: 0 0 20px;
+}
+
+.global-timeline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.global-post-card {
+  background: var(--color-card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.global-post-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.global-post-card__author {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-green-dark);
+}
+
+.global-post-card__time {
+  font-size: 0.95rem;
+  color: var(--color-text-light);
+}
+
+.global-post-card__photo {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+.global-post-card__stamp {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 14px;
+}
+
+.global-post-card__reactions {
+  display: flex;
+  gap: 12px;
+}
+
+.reaction-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 3px solid var(--color-border);
+  border-radius: 999px;
+  background-color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.reaction-btn__icon {
+  font-size: 1.3rem;
+}
+
+.reaction-btn__count {
+  min-width: 1.2em;
+}
+
+.reaction-btn--warm.reaction-btn--active {
+  border-color: var(--color-orange);
+  background-color: #fff4ef;
+  color: var(--color-orange-dark);
+}
+
+.reaction-btn--cheer.reaction-btn--active {
+  border-color: var(--color-green);
+  background-color: #f4f8f2;
+  color: var(--color-green-dark);
+}
+
+
 /* -------------------- レスポンシブ調整 -------------------- */
 @media (min-width: 600px) {
   :root {
     --font-base: 22px;
   }
 }
+
 
 

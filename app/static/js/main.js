@@ -758,12 +758,48 @@
     })();
   }
 
+  // ===================================================================
+  // みんなの縁側（グローバルタイムライン）
+  // ===================================================================
+  function initTimelinePage() {
+    const list = qs("#global-timeline-list");
+    if (!list) return; // このページでなければ何もしない
+
+    async function react(postId, reactionType, btn) {
+      try {
+        const result = await postForm(
+          "/api/posts/" + postId + "/react",
+          { reaction_type: reactionType }
+        );
+        btn.classList.toggle("reaction-btn--active", result.reacted);
+        const countEl = qs(".reaction-btn__count", btn);
+        if (countEl) {
+          countEl.textContent =
+            reactionType === "warm" ? result.warm_count : result.cheer_count;
+        }
+      } catch (e) {
+        // 通信エラー時は静かに無視（シニア向けUIでは余計なエラー表示を避ける）
+      }
+    }
+
+    qsa(".reaction-btn", list).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const postId = btn.dataset.postId;
+        const reactionType = btn.dataset.reactionType;
+        if (!postId || !reactionType) return;
+        react(postId, reactionType, btn);
+      });
+    });
+  }
+
   window.Engawa = {
     initLoginPage: initLoginPage,
     initHomePage: initHomePage,
     initTalkPage: initTalkPage,
     initOchanomaPage: initOchanomaPage,
+    initTimelinePage: initTimelinePage,
   };
+
 })();
 
 

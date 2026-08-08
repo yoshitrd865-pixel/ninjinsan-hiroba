@@ -29,11 +29,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import extract
 
 from app.database import get_db, init_db
-from app.models import User, SmsCode, Post, ChatMessage
+from app.models import User, SmsCode, Post, ChatMessage, PostReaction
 from app.auth import get_current_user, login_user, logout_user
 from app.services.sms_service import send_sms, SMS_LIVE_MODE
 from app.services.ai_service import generate_reply, AI_ENABLED
@@ -97,6 +97,63 @@ STAMP_LABELS = {
     "😲": "びっくりした",
     "😌": "のんびりした",
 }
+
+REACTION_TYPES = {"warm", "cheer"}
+
+
+def humanize_time(dt: datetime.datetime) -> str:
+    """投稿日時を『10分前』のような相対表現に変換する"""
+    now = datetime.datetime.utcnow()
+    seconds = (now - dt).total_seconds()
+    if seconds < 60:
+        return "たった今"
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return f"{minutes}分前"
+    hours = int(minutes // 60)
+    if hours < 24:
+        return f"{hours}時間前"
+    days = int(hours // 24)
+    if days < 7:
+        return f"{days}日前"
+    return dt.strftime("%Y年%m月%d日")
+
+
+def _build_timeline_posts(db: Session, user: User, limit: int = 50) -> list[dict]:
+    """全ユーザーの投稿を新着順に取得し、リアクション情報を付与して返す"""
+    posts = (
+        db.query(Post)
+        .options(joinedload(Post.user), joinedload(Post.reactions))
+        .order_by(Post.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    result = []
+    for post in posts:
+        warm_count = sum(1 for r in post.reactions if r.reaction_type == "warm")
+        cheer_count = sum(1 for r in post.reactions if r.reaction_type == "cheer")
+        my_reactions = {
+            r.reaction_type for r in post.reactions if r.user_id == user.id
+        }
+        result.append(
+            {
+                "id": post.id,
+                "image_path": post.image_path,
+                "stamp": post.stamp,
+                "stamp_label": post.stamp_label,
+                "author_name": post.user.display_name if post.user else "ゲスト",
+                "is_mine": post.user_id == user.id,
+                "time_label": humanize_time(post.created_at),
+                "warm_count": warm_count,
+                "cheer_count": cheer_count,
+                "reacted_warm": "warm" in my_reactions,
+                "reacted_cheer": "cheer" in my_reactions,
+            }
+        )
+    return result
+
+
 
 
 # ==================================================================
@@ -193,6 +250,22 @@ async def ochanoma_page(
 
     context = common_context(request, active="ochanoma", user=user)
     return templates.TemplateResponse("ochanoma.html", context)
+
+
+@app.get("/timeline", response_class=HTMLResponse)
+async def timeline_page(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """みんなの縁側：全ユーザーの投稿を新着順に一覧表示するタイムライン"""
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+
+    context = common_context(request, active="timeline", user=user)
+    context["timeline_posts"] = _build_timeline_posts(db, user, limit=50)
+    return templates.TemplateResponse("timeline.html", context)
+
 
 
 @app.post("/logout")
@@ -335,12 +408,86 @@ async def create_post(
     )
 
 
+@app.get("/api/timeline/posts")
+async def timeline_posts_api(
+    request: Request,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """みんなの投稿一覧をJSONで返す（新着順）"""
+    require_login(user)
+    return JSONResponse({"success": True, "posts": _build_timeline_posts(db, user, limit=50)})
+
+
+@app.post("/api/posts/{post_id}/react")
+async def react_to_post(
+    post_id: int,
+    request: Request,
+    reaction_type: str = Form(...),
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """他の人の投稿に「🌸 温かいね」「応援する」を送る（もう一度押すと取り消し）"""
+    require_login(user)
+
+    if reaction_type not in REACTION_TYPES:
+        raise HTTPException(status_code=400, detail="不正なリアクション種別です")
+
+    post = db.query(Post).filter(Post.id == post_id).first()
+    if post is None:
+        raise HTTPException(status_code=404, detail="投稿が見つかりません")
+
+    existing = (
+        db.query(PostReaction)
+        .filter(
+            PostReaction.post_id == post_id,
+            PostReaction.user_id == user.id,
+            PostReaction.reaction_type == reaction_type,
+        )
+        .first()
+    )
+
+    if existing:
+        db.delete(existing)
+        db.commit()
+        reacted = False
+    else:
+        reaction = PostReaction(
+            post_id=post_id, user_id=user.id, reaction_type=reaction_type
+        )
+        db.add(reaction)
+        db.commit()
+        reacted = True
+
+    warm_count = (
+        db.query(PostReaction)
+        .filter(PostReaction.post_id == post_id, PostReaction.reaction_type == "warm")
+        .count()
+    )
+    cheer_count = (
+        db.query(PostReaction)
+        .filter(PostReaction.post_id == post_id, PostReaction.reaction_type == "cheer")
+        .count()
+    )
+
+    return JSONResponse(
+        {
+            "success": True,
+            "reacted": reacted,
+            "reaction_type": reaction_type,
+            "warm_count": warm_count,
+            "cheer_count": cheer_count,
+        }
+    )
+
+
 # ==================================================================
 # AIおしゃべりAPI
 # ==================================================================
 @app.post("/api/talk/message")
 async def talk_message(
     request: Request,
+
     message: str = Form(...),
     user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),

@@ -12,6 +12,7 @@ from sqlalchemy import (
     ForeignKey,
     Boolean,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 
@@ -66,6 +67,34 @@ class Post(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
 
     user = relationship("User", back_populates="posts")
+    reactions = relationship(
+        "PostReaction", back_populates="post", cascade="all, delete-orphan"
+    )
+
+
+class PostReaction(Base):
+    """投稿への反応（🌸温かいね／📣応援する）
+
+    Instagramの「いいね」のような機能。同じユーザーが同じ投稿に
+    同じ種類のリアクションを二重に押せないよう一意制約を設けている。
+    もう一度押すと解除（トグル）される。
+    """
+
+    __tablename__ = "post_reactions"
+    __table_args__ = (
+        UniqueConstraint(
+            "post_id", "user_id", "reaction_type", name="uq_post_user_reaction"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    reaction_type = Column(String(20), nullable=False)  # "warm" または "cheer"
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    post = relationship("Post", back_populates="reactions")
+    user = relationship("User")
 
 
 class ChatMessage(Base):
