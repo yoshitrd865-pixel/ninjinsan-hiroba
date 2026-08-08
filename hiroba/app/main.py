@@ -30,6 +30,8 @@ from app.paths import STATIC_DIR, TEMPLATES_DIR
 from app.routers import auth as auth_router
 from app.routers import kids as kids_router
 from app.routers import reactions as reactions_router
+from app.routers import promises as promises_router
+
 
 SECRET_KEY = os.environ.get("HIROBA_SECRET_KEY", "hiroba-dev-secret-key-change-me")
 
@@ -54,6 +56,8 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 app.include_router(auth_router.router)
 app.include_router(kids_router.router)
 app.include_router(reactions_router.router)
+app.include_router(promises_router.router)
+
 
 
 @app.on_event("startup")
@@ -108,16 +112,14 @@ async def kids_create(request: Request):
 
 @app.get("/kids/ochanoma", response_class=HTMLResponse)
 async def kids_ochanoma(request: Request):
-    """おちゃのま（今後実装予定：みんなとおしゃべりする場所）"""
+    """おちゃのま（キッズ同士の「遊ぶ約束」機能：AI司会＋保護者承認フロー）"""
     context = {
         "request": request,
         "active": "ochanoma",
         "app_name": "ひろば",
-        "emoji": "🍵",
-        "title": "おちゃのま",
-        "message": "おちゃのまは じゅんびちゅうだよ！\nもうすこし まっててね。",
     }
-    return templates.TemplateResponse("kids/coming_soon.html", context)
+    return templates.TemplateResponse("kids/ochanoma.html", context)
+
 
 
 @app.get("/kids/oyako", response_class=HTMLResponse)

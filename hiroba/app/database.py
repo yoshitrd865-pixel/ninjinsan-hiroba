@@ -42,6 +42,8 @@ def get_db():
 def init_db():
     """アプリ起動時にテーブルを作成する"""
     # モデルをインポートしてから create_all することで登録を確実にする
-    from app.models import user, post, reaction  # noqa: F401
+    from app.models import user, post, reaction, promise  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
+
+

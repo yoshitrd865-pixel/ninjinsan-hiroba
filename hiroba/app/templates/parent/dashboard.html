@@ -6,4 +6,100 @@
   <p>保護者ダッシュボード（準備中）</p>
   <a class="hiroba-btn hiroba-btn--blue" href="/parent/children/new">キッズアカウントを追加</a>
 </div>
+
+<div class="hiroba-card">
+  <h2 style="margin-top:0;">🤝 遊ぶ約束の確認</h2>
+  <p style="color: var(--hiroba-text-soft);">
+    お子さまが提案した「遊ぶ約束」を確認し、承認または拒否してください。
+    双方の保護者が承認すると約束が成立します。
+  </p>
+  <div id="promise-list">
+    <div class="hiroba-loading">よみこみちゅう…</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var STATUS_LABELS = {
+    pending_parents: "承認待ち",
+    approved: "約束成立！🎉",
+    rejected: "拒否済み",
+  };
+
+  function formatApprovalState(p) {
+    var bits = [];
+    bits.push((p.sender_kid_name || "送信側") + "の保護者: " + (p.sender_parent_approved ? "✅承認済み" : "未回答"));
+    bits.push((p.receiver_kid_name || "受信側") + "の保護者: " + (p.receiver_parent_approved ? "✅承認済み" : "未回答"));
+    return bits.join(" ／ ");
+  }
+
+  async function loadPromises() {
+    var list = document.getElementById("promise-list");
+    try {
+      var data = await Hiroba.api("/api/promises/my-promises");
+      var promises = (data && data.promises) || [];
+      if (promises.length === 0) {
+        list.innerHTML = "<p>まだ約束の提案はありません。</p>";
+        return;
+      }
+      list.innerHTML = promises.map(renderPromiseRow).join("");
+      attachHandlers(list);
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      list.innerHTML = "<p>読み込みに失敗しました。</p>";
+    }
+  }
+
+  function renderPromiseRow(p) {
+    var detailBits = [];
+    if (p.suggested_datetime) detailBits.push("🗓️ " + p.suggested_datetime);
+    if (p.place) detailBits.push("📍 " + p.place);
+
+    var actionsHtml = "";
+    if (p.status === "pending_parents") {
+      actionsHtml =
+        '<button type="button" class="hiroba-btn hiroba-btn--green promise-approve-btn" data-promise-id="' + p.id + '" style="min-height:44px; font-size:16px; margin-top:8px;">承認する</button>' +
+        '<button type="button" class="hiroba-btn hiroba-btn--pink promise-reject-btn" data-promise-id="' + p.id + '" style="min-height:44px; font-size:16px; margin-top:8px;">拒否する</button>';
+    }
+
+    return (
+      '<div style="border:1px solid #eee; border-radius:12px; padding:14px; margin-bottom:12px;">' +
+      '  <div style="font-weight:700;">' + Hiroba.escapeHtml(p.sender_kid_name) + ' さん ＆ ' + Hiroba.escapeHtml(p.receiver_kid_name) + ' さん</div>' +
+      '  <div style="font-size:18px; font-weight:800; margin-top:4px;">' + Hiroba.escapeHtml(p.title) + '</div>' +
+      (detailBits.length ? '  <div style="color:#888; font-size:14px;">' + Hiroba.escapeHtml(detailBits.join(" / ")) + '</div>' : "") +
+      '  <div style="margin-top:6px; font-size:14px;">状態: <strong>' + (STATUS_LABELS[p.status] || p.status) + '</strong></div>' +
+      '  <div style="color:#888; font-size:13px;">' + formatApprovalState(p) + '</div>' +
+      actionsHtml +
+      '</div>'
+    );
+  }
+
+  function attachHandlers(list) {
+    list.querySelectorAll(".promise-approve-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () { respond(btn.dataset.promiseId, "approve"); });
+    });
+    list.querySelectorAll(".promise-reject-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () { respond(btn.dataset.promiseId, "reject"); });
+    });
+  }
+
+  async function respond(promiseId, decision) {
+    try {
+      var fd = new FormData();
+      fd.append("decision", decision);
+      await Hiroba.api("/api/promises/" + promiseId + "/parent-response", { method: "POST", body: fd });
+      loadPromises();
+    } catch (e) {
+      alert(e.message || "処理に失敗しました");
+    }
+  }
+
+  loadPromises();
+})();
+</script>
 {% endblock %}
