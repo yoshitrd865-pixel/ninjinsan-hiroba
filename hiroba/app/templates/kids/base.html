@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>{{ app_name|default("ひろば") }}</title>
+  <link rel="stylesheet" href="/static/css/kids_theme.css">
+</head>
+<body>
+  <div class="hiroba-app">
+    <header class="hiroba-header">
+      <span class="hiroba-logo">🏞️ ひろば</span>
+    </header>
+
+    <main class="hiroba-main">
+      {% block content %}{% endblock %}
+    </main>
+
+    <nav class="hiroba-nav">
+      <a href="/" class="hiroba-nav-item {% if active == 'home' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">🏠</span>
+      </a>
+      <a href="/post" class="hiroba-nav-item {% if active == 'post' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">📸</span>
+      </a>
+      <a href="/draw" class="hiroba-nav-item {% if active == 'draw' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">🎨</span>
+      </a>
+      <a href="/voice" class="hiroba-nav-item {% if active == 'voice' %}is-active{% endif %}">
+        <span class="hiroba-nav-icon">🎤</span>
+      </a>
+    </nav>
+  </div>
+</body>
+</html>

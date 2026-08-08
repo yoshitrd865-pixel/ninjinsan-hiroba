@@ -1,0 +1,290 @@
+/* ==================================================================
+   ひろば - キッズ向けテーマCSS (kids_theme.css)
+
+   コンセプト：
+   - 文字が読めない/書けない子どもでも直感的に使えるUI
+   - 角丸(border-radius: 20px以上)でやわらかく安全な印象
+   - ビタミンカラーを基調にした、元気でカラフルな配色
+   - タップしやすい特大ボタン(高さ60px以上)
+   ================================================================== */
+
+:root {
+  /* --- カラフルな配色パレット --- */
+  --hiroba-yellow: #FFC93C;
+  --hiroba-orange: #FF9F45;
+  --hiroba-pink: #FF6F91;
+  --hiroba-red: #FF6B6B;
+  --hiroba-green: #6BCB77;
+  --hiroba-blue: #4D96FF;
+  --hiroba-purple: #9B72FF;
+  --hiroba-sky: #B5EAEA;
+
+  --hiroba-bg: #FFF8EE;           /* あたたかみのある背景色 */
+  --hiroba-card-bg: #FFFFFF;
+  --hiroba-text: #4A4A4A;
+  --hiroba-text-soft: #8A8A8A;
+
+  /* --- サイズ規定 --- */
+  --hiroba-radius: 24px;          /* 角丸: 20px以上 */
+  --hiroba-radius-lg: 32px;
+  --hiroba-button-height: 72px;   /* 特大ボタン: 60px以上 */
+  --hiroba-button-height-lg: 96px;
+
+  --hiroba-shadow: 0 6px 0 rgba(0, 0, 0, 0.08);
+  --hiroba-shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.10);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--hiroba-bg);
+  color: var(--hiroba-text);
+  font-family: "UD Digital 教科書体", "Yu Gothic", "Hiragino Maru Gothic ProN",
+    "Rounded Mplus 1c", "M PLUS Rounded 1c", sans-serif;
+  font-size: 20px;
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none; /* 誤操作しやすい長押し選択を防ぐ */
+}
+
+img, svg {
+  -webkit-user-drag: none;
+}
+
+/* ------------------------------------------------------------------
+   レイアウト
+   ------------------------------------------------------------------ */
+.hiroba-app {
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px; /* 下部ナビの高さ分の余白 */
+}
+
+.hiroba-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  gap: 12px;
+}
+
+.hiroba-header .hiroba-logo {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--hiroba-orange);
+  letter-spacing: 0.05em;
+}
+
+.hiroba-main {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ------------------------------------------------------------------
+   カード（お知らせ・投稿など）
+   ------------------------------------------------------------------ */
+.hiroba-card {
+  background-color: var(--hiroba-card-bg);
+  border-radius: var(--hiroba-radius-lg);
+  box-shadow: var(--hiroba-shadow-soft);
+  padding: 20px;
+}
+
+.hiroba-card img.hiroba-card-media,
+.hiroba-card video.hiroba-card-media {
+  width: 100%;
+  border-radius: var(--hiroba-radius);
+  display: block;
+  object-fit: cover;
+}
+
+/* ------------------------------------------------------------------
+   特大ボタン（キッズ向けメイン操作）
+   ------------------------------------------------------------------ */
+.hiroba-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--hiroba-button-height); /* 60px以上 */
+  border: none;
+  border-radius: var(--hiroba-radius);
+  font-size: 26px;
+  font-weight: 700;
+  color: #FFFFFF;
+  cursor: pointer;
+  box-shadow: var(--hiroba-shadow);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  touch-action: manipulation;
+}
+
+.hiroba-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+}
+
+.hiroba-btn .hiroba-btn-icon {
+  font-size: 34px;
+  line-height: 1;
+}
+
+/* ボタンカラー展開 */
+.hiroba-btn--orange  { background-color: var(--hiroba-orange); }
+.hiroba-btn--pink    { background-color: var(--hiroba-pink); }
+.hiroba-btn--green   { background-color: var(--hiroba-green); }
+.hiroba-btn--blue    { background-color: var(--hiroba-blue); }
+.hiroba-btn--purple  { background-color: var(--hiroba-purple); }
+.hiroba-btn--yellow  { background-color: var(--hiroba-yellow); color: #6B4A00; }
+
+/* 超特大ボタン（撮る・話す等のメインアクション用） */
+.hiroba-btn--xl {
+  min-height: var(--hiroba-button-height-lg);
+  font-size: 32px;
+  border-radius: var(--hiroba-radius-lg);
+}
+
+/* 丸型の大きなアイコンボタン（お絵描き/ボイスメモ録音など） */
+.hiroba-round-btn {
+  width: 96px;
+  height: 96px;
+  min-height: 96px;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--hiroba-red);
+  color: #FFFFFF;
+  font-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--hiroba-shadow);
+  cursor: pointer;
+}
+
+.hiroba-round-btn:active {
+  transform: scale(0.94);
+}
+
+/* ------------------------------------------------------------------
+   気分スタンプ / リアクションボタン
+   ------------------------------------------------------------------ */
+.hiroba-stamp-picker,
+.hiroba-reaction-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.hiroba-stamp,
+.hiroba-reaction {
+  min-width: 64px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  background-color: var(--hiroba-sky);
+  border: 4px solid transparent;
+  border-radius: var(--hiroba-radius);
+  cursor: pointer;
+  box-shadow: var(--hiroba-shadow);
+}
+
+.hiroba-stamp.is-selected,
+.hiroba-reaction.is-active {
+  border-color: var(--hiroba-orange);
+  background-color: #FFF3D6;
+}
+
+/* リアクション4種（やばい！/おもしろい！/すごい！/すてき！） */
+.hiroba-reaction--yabai     { background-color: #FFE0E0; }
+.hiroba-reaction--omoshiroi { background-color: #FFF3D6; }
+.hiroba-reaction--sugoi     { background-color: #E1F5E5; }
+.hiroba-reaction--suteki    { background-color: #E7E4FF; }
+
+.hiroba-reaction-label {
+  font-size: 14px;
+  margin-top: 4px;
+  color: var(--hiroba-text-soft);
+}
+
+/* ------------------------------------------------------------------
+   下部固定ナビゲーション（アイコンのみ、文字なしでもOK）
+   ------------------------------------------------------------------ */
+.hiroba-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background-color: var(--hiroba-card-bg);
+  border-radius: var(--hiroba-radius-lg) var(--hiroba-radius-lg) 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  padding: 12px 8px;
+  gap: 8px;
+}
+
+.hiroba-nav-item {
+  flex: 1;
+  min-height: 60px; /* 特大ボタン基準を満たす */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--hiroba-radius);
+  color: var(--hiroba-text-soft);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.hiroba-nav-item .hiroba-nav-icon {
+  font-size: 30px;
+}
+
+.hiroba-nav-item.is-active {
+  background-color: var(--hiroba-yellow);
+  color: #6B4A00;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   保護者向け画面（parent/）は少し落ち着いたトーンにする
+   ------------------------------------------------------------------ */
+.hiroba-parent {
+  --hiroba-bg: #F4F6FA;
+  font-size: 16px;
+}
+
+.hiroba-parent .hiroba-btn {
+  min-height: 52px;
+  font-size: 18px;
+}
+
+/* ------------------------------------------------------------------
+   レスポンシブ調整
+   ------------------------------------------------------------------ */
+@media (max-width: 420px) {
+  .hiroba-btn {
+    font-size: 22px;
+  }
+  .hiroba-round-btn {
+    width: 80px;
+    height: 80px;
+  }
+}

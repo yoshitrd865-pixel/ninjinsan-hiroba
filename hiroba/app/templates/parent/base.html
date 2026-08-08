@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ app_name|default("ひろば") }} - 保護者用</title>
+  <link rel="stylesheet" href="/static/css/kids_theme.css">
+</head>
+<body class="hiroba-parent">
+  <div class="hiroba-app">
+    <header class="hiroba-header">
+      <span class="hiroba-logo" style="font-size: 22px;">ひろば（保護者用）</span>
+    </header>
+    <main class="hiroba-main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>
