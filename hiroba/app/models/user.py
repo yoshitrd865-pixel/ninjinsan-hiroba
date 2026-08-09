@@ -72,10 +72,15 @@ class User(Base):
     parent_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
 
     # --- 保護者向けLINE通知設定（/parent/notifications） ---
-    # LINEアカウント連携時に発行される想定のID（開発モードでは手動で紐付ける簡易フローのみ提供）
+    # LINEアカウント連携時に発行される想定のID（LINEログインまたは
+    # /api/parent/notifications/link の簡易連携フローで設定される）
     line_user_id = Column(String(64), unique=True, index=True, nullable=True)
     # LINE通知を送るかどうか（保護者本人のトグル設定。デフォルトはON）
     line_notify_enabled = Column(Boolean, nullable=False, default=True)
+
+    # --- Googleログイン用（本番OAuth 2.0連携で発行されるGoogleアカウントの一意ID＝sub） ---
+    google_user_id = Column(String(64), unique=True, index=True, nullable=True)
+
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

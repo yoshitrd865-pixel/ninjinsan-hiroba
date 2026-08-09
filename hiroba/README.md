@@ -97,9 +97,41 @@ python run.py
     - `HIROBA_SECRET_KEY`（ランダムな文字列）
     - `OPENAI_API_KEY`（ボイスメモのWhisper音声認識を使う場合のみ）
     - `HIROBA_DATABASE_URL`（本番運用ではSQLiteではなくPostgreSQL等を推奨）
+    - `BASE_URL`（このアプリの公開URL。OAuthコールバックURL生成に使用）
+    - `LINE_CHANNEL_ID` / `LINE_CHANNEL_SECRET`（LINEログインを使う場合）
+    - `LINE_MESSAGING_CHANNEL_ACCESS_TOKEN`（LINE通知送信を使う場合）
+    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`（Googleログインを使う場合）
 
 無料プランではファイルシステムが永続化されない場合があるため、
 本番運用ではアップロード画像・音声も外部ストレージの利用を推奨します。
+
+## LINEログイン／Googleログイン（本番OAuth 2.0）
+
+保護者は電話番号ログインに加え、LINEアカウント・Googleアカウントでも
+ログインできます（`/auth/line/login`, `/auth/google/login`）。
+
+セットアップ:
+
+1. **LINEログイン**: [LINE Developers](https://developers.line.biz/) で
+   LINEログイン用チャネルを作成し、Callback URLに
+   `{BASE_URL}/auth/line/callback` を登録。発行された
+   Channel ID / Channel Secret を `LINE_CHANNEL_ID` / `LINE_CHANNEL_SECRET`
+   に設定してください。
+2. **Googleログイン**: [Google Cloud Console](https://console.cloud.google.com/)
+   でOAuthクライアント（ウェブアプリケーション）を作成し、承認済みの
+   リダイレクトURIに `{BASE_URL}/auth/google/callback` を登録。
+   発行されたクライアントID/シークレットを `GOOGLE_CLIENT_ID` /
+   `GOOGLE_CLIENT_SECRET` に設定してください。
+3. いずれの環境変数も未設定の場合、対応するログインボタンを押すと
+   503エラー（現在利用できません）になりますが、既存の電話番号ログインは
+   影響を受けず動作します。
+
+ログイン成功時は、LINEのuserId／GoogleのsubIDに紐づく既存の保護者
+アカウントがあればそのままログインし、なければ新規登録されます
+（Googleログインの場合、既に電話番号ログインで登録済みの同一メール
+アドレスの保護者アカウントがあれば、そのアカウントに自動的に紐付けます）。
+その後 `/select-kid` （キッズ選択画面）へ遷移します。
+
 
 
 

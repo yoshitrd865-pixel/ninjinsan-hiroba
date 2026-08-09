@@ -29,6 +29,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.database import init_db
 from app.paths import TEMPLATES_DIR
 from app.routers import auth as auth_router
+from app.routers import oauth as oauth_router
 
 from app.routers import kids as kids_router
 from app.routers import reactions as reactions_router
@@ -36,6 +37,7 @@ from app.routers import promises as promises_router
 from app.routers import rooms as rooms_router
 from app.routers import room_content as room_content_router
 from app.routers import parent_settings as parent_settings_router
+
 
 
 
@@ -71,7 +73,9 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # APIルーターの登録
 app.include_router(auth_router.router)
+app.include_router(oauth_router.router)
 app.include_router(kids_router.router)
+
 app.include_router(reactions_router.router)
 app.include_router(promises_router.router)
 app.include_router(rooms_router.router)
