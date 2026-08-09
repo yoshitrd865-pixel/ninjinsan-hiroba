@@ -257,6 +257,12 @@ img, svg {
   font-size: 30px;
 }
 
+.hiroba-nav-item .hiroba-nav-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+
 .hiroba-nav-item.is-active {
   background-color: var(--hiroba-yellow);
   color: #6B4A00;
@@ -385,6 +391,28 @@ img, svg {
   font-weight: 700;
   white-space: nowrap;
 }
+
+.hiroba-post-delete-btn {
+  margin-left: auto;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--hiroba-bg);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.hiroba-post-delete-btn:active {
+  transform: scale(0.9);
+  background: #FFD3D3;
+}
+
 
 .hiroba-post-media-wrap {
   border-radius: var(--hiroba-radius);
@@ -845,6 +873,338 @@ img, svg {
   border-color: var(--hiroba-orange);
   background: var(--hiroba-yellow);
 }
+
+/* ==================================================================
+   トップ画面（だれが つかう？の前段：ひろば トップ）
+   HTML側クラス: hiroba-top-wrap / hiroba-top-title / hiroba-top-sub /
+                 hiroba-top-card / hiroba-top-card--room / hiroba-top-card--parent /
+                 hiroba-top-card-emoji / hiroba-top-card-title / hiroba-top-card-desc
+   ------------------------------------------------------------------ */
+.hiroba-top-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 32px 20px 60px;
+  max-width: 560px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hiroba-top-title {
+  font-size: 42px;
+  font-weight: 900;
+  color: var(--hiroba-orange);
+  letter-spacing: 0.03em;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.06);
+}
+
+.hiroba-top-sub {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--hiroba-text-soft);
+  margin: -12px 0 8px;
+}
+
+/* 巨大グラデーションカードボタン：リンクだが装飾を完全に打ち消す */
+.hiroba-top-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 200px;
+  border-radius: var(--hiroba-radius-lg);
+  padding: 28px 20px;
+  text-decoration: none !important;
+  color: #FFFFFF !important;
+  box-shadow: var(--hiroba-shadow-soft), 0 10px 0 rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  touch-action: manipulation;
+}
+
+.hiroba-top-card:visited,
+.hiroba-top-card:link,
+.hiroba-top-card:hover,
+.hiroba-top-card:active {
+  text-decoration: none !important;
+  color: #FFFFFF !important;
+}
+
+.hiroba-top-card:active {
+  transform: translateY(6px) scale(0.98);
+  box-shadow: var(--hiroba-shadow-soft);
+}
+
+.hiroba-top-card--room {
+  background: linear-gradient(135deg, var(--hiroba-orange), var(--hiroba-yellow));
+}
+
+.hiroba-top-card--parent {
+  background: linear-gradient(135deg, var(--hiroba-blue), var(--hiroba-purple));
+}
+
+.hiroba-top-card-emoji {
+  font-size: 64px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.15));
+}
+
+.hiroba-top-card-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #FFFFFF;
+}
+
+.hiroba-top-card-desc {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* ------------------------------------------------------------------
+   おへや：件数上限の注意テキスト
+   ------------------------------------------------------------------ */
+.hiroba-room-limit-note {
+  text-align: center;
+  font-size: 14px;
+  color: var(--hiroba-text-soft);
+  margin: 4px 0 12px;
+}
+
+/* ------------------------------------------------------------------
+   おへや詳細画面：ヘッダー（戻るボタン・アイコン・名前）
+   ------------------------------------------------------------------ */
+.hiroba-room-header {
+  justify-content: flex-start;
+  gap: 14px;
+}
+
+.hiroba-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  background: var(--hiroba-card-bg);
+  box-shadow: var(--hiroba-shadow);
+  font-size: 22px;
+  text-decoration: none !important;
+  flex-shrink: 0;
+}
+
+.hiroba-back-btn:active {
+  transform: scale(0.92);
+}
+
+.hiroba-room-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hiroba-room-header-icon {
+  font-size: 30px;
+}
+
+.hiroba-room-header-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--hiroba-text);
+}
+
+/* おへや詳細画面：パネル切り替え（ひろば／つくる／やくそく） */
+.hiroba-room-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ------------------------------------------------------------------
+   投稿メッセージ／テキストエリア
+   ------------------------------------------------------------------ */
+.hiroba-textarea {
+  width: 100%;
+  font-size: 18px;
+  padding: 14px 16px;
+  border-radius: var(--hiroba-radius);
+  border: 3px solid var(--hiroba-sky);
+  font-family: inherit;
+  resize: vertical;
+  margin-top: 6px;
+}
+
+.hiroba-textarea:focus {
+  outline: none;
+  border-color: var(--hiroba-orange);
+}
+
+.hiroba-post-message {
+  font-size: 17px;
+  color: var(--hiroba-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ------------------------------------------------------------------
+   やくそく：入力フィールド／メンバー表示
+   ------------------------------------------------------------------ */
+.hiroba-promise-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+
+.hiroba-promise-field-label {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--hiroba-text);
+}
+
+.hiroba-promise-detail {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--hiroba-text);
+  text-align: center;
+}
+
+.hiroba-promise-members {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.hiroba-promise-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 72px;
+}
+
+.hiroba-promise-member-avatar {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--hiroba-sky);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+
+.hiroba-promise-member.is-me .hiroba-promise-member-avatar {
+  box-shadow: 0 0 0 4px var(--hiroba-yellow);
+}
+
+.hiroba-promise-member-name {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--hiroba-text-soft);
+}
+
+.hiroba-promise-check {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--hiroba-green);
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.1);
+}
+
+.hiroba-promise-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+
+/* ------------------------------------------------------------------
+   保護者用：ダッシュボードのナビゲーションカード／戻るリンク
+   ------------------------------------------------------------------ */
+.hiroba-parent-nav-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--hiroba-card-bg);
+  border-radius: var(--hiroba-radius);
+  box-shadow: var(--hiroba-shadow-soft);
+  padding: 18px 20px;
+  text-decoration: none !important;
+  color: var(--hiroba-text) !important;
+  transition: transform 0.1s ease;
+}
+
+.hiroba-parent-nav-card:hover,
+.hiroba-parent-nav-card:visited,
+.hiroba-parent-nav-card:link {
+  text-decoration: none !important;
+  color: var(--hiroba-text) !important;
+}
+
+.hiroba-parent-nav-card:active {
+  transform: scale(0.98);
+}
+
+.hiroba-parent-nav-card .icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.hiroba-parent-nav-card .title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hiroba-text);
+}
+
+.hiroba-parent-nav-card .desc {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--hiroba-text-soft);
+}
+
+.hiroba-parent-nav-card .arrow {
+  margin-left: auto;
+  font-size: 24px;
+  color: var(--hiroba-text-soft);
+  flex-shrink: 0;
+}
+
+.hiroba-parent-back-link {
+  color: var(--hiroba-text-soft) !important;
+  text-decoration: none !important;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------
+   投稿けす時のフェードアウト
+   ------------------------------------------------------------------ */
+.is-removing {
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
 
 
 
