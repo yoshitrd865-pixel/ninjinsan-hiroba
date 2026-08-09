@@ -13,6 +13,7 @@ FastAPI エントリーポイント
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -26,8 +27,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.database import init_db
-from app.paths import STATIC_DIR, TEMPLATES_DIR
+from app.paths import TEMPLATES_DIR
 from app.routers import auth as auth_router
+
 from app.routers import kids as kids_router
 from app.routers import reactions as reactions_router
 from app.routers import promises as promises_router
@@ -49,7 +51,18 @@ app = FastAPI(
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # 静的ファイル（CSS / JS / 音 / アップロード画像・音声）
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+# main.py の位置から確実に app/static の絶対パスを取得する
+# （実行ディレクトリに依存しない堅牢なパス指定。Render等の本番環境で
+#   カレントディレクトリがどこであっても /static 配下を確実に配信するため）
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+else:
+    # 万が一カレントディレクトリ基準の場合のフォールバック
+    app.mount("/static", StaticFiles(directory="hiroba/app/static"), name="static")
+
 
 # Jinja2テンプレート（kids/ ・ parent/ ・ auth/ の3系統）
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
