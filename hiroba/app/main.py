@@ -32,7 +32,7 @@ from app.routers import kids as kids_router
 from app.routers import reactions as reactions_router
 from app.routers import promises as promises_router
 from app.routers import rooms as rooms_router
-
+from app.routers import room_content as room_content_router
 
 
 SECRET_KEY = os.environ.get("HIROBA_SECRET_KEY", "hiroba-dev-secret-key-change-me")
@@ -60,8 +60,7 @@ app.include_router(kids_router.router)
 app.include_router(reactions_router.router)
 app.include_router(promises_router.router)
 app.include_router(rooms_router.router)
-
-
+app.include_router(room_content_router.router)
 
 
 @app.on_event("startup")
@@ -87,9 +86,19 @@ async def select_kid_page(request: Request):
 # キッズ向けページ
 # ------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
-async def root():
-    """ルートアクセスはキッズ向けホーム画面へリダイレクトする"""
-    return RedirectResponse(url="/kids/home")
+async def root(request: Request):
+    """アプリの最初のページ（トップ画面）
+
+    「おへや（おともだちとつかうところ）」と
+    「おうちの人の部屋（おうちの人がみるところ）」の
+    2つの巨大カードボタンを表示する。
+    """
+    context = {
+        "request": request,
+        "active": None,
+        "app_name": "ひろば",
+    }
+    return templates.TemplateResponse("kids/top.html", context)
 
 
 @app.get("/kids/home", response_class=HTMLResponse)
@@ -125,7 +134,6 @@ async def kids_ochanoma(request: Request):
     return templates.TemplateResponse("kids/ochanoma.html", context)
 
 
-
 @app.get("/kids/rooms", response_class=HTMLResponse)
 async def kids_rooms(request: Request):
     """わたしのおへや（完全クローズド・招待制のグループ機能）"""
@@ -138,7 +146,6 @@ async def kids_rooms(request: Request):
 
 
 @app.get("/kids/oyako", response_class=HTMLResponse)
-
 async def kids_oyako(request: Request):
     """おうちひと（保護者ページへの案内。まだこの画面自体は簡易表示）"""
     context = {
@@ -148,23 +155,86 @@ async def kids_oyako(request: Request):
         "emoji": "👨‍👩‍👧",
         "title": "おうちのひと",
         "message": "おうちの人と いっしょに みてね！",
-        "action_url": "/parent",
+        "action_url": "/parent/dashboard",
         "action_label": "ほごしゃ用ページを ひらく",
     }
     return templates.TemplateResponse("kids/coming_soon.html", context)
+
+
+@app.get("/kids/rooms/{room_id}", response_class=HTMLResponse)
+async def kids_room_detail(request: Request, room_id: int):
+    """おへやの中（ひろば・つくる・やくそく の3タブ構成）"""
+    context = {
+        "request": request,
+        "active": "rooms",
+        "app_name": "ひろば",
+        "room_id": room_id,
+    }
+    return templates.TemplateResponse("kids/room_detail.html", context)
 
 
 # ------------------------------------------------------------------
 # 保護者向けページ
 # ------------------------------------------------------------------
 @app.get("/parent", response_class=HTMLResponse)
+async def parent_root_redirect():
+    """互換用: 旧URL(/parent)は保護者ダッシュボードへリダイレクトする"""
+    return RedirectResponse(url="/parent/dashboard")
+
+
+@app.get("/parent/dashboard", response_class=HTMLResponse)
 async def parent_dashboard(request: Request):
-    """保護者用ダッシュボード（キッズアカウント管理・投稿確認）"""
+    """おうちの人の部屋（アプリ全体を見守るダッシュボード・ナビゲーションのハブ画面）"""
     context = {
         "request": request,
         "app_name": "ひろば",
+        "active": "dashboard",
     }
     return templates.TemplateResponse("parent/dashboard.html", context)
+
+
+@app.get("/parent/rooms", response_class=HTMLResponse)
+async def parent_rooms_page(request: Request):
+    """おへやの参加メンバーの確認（参加中のおへや＆メンバー一覧・さんか承認）"""
+    context = {
+        "request": request,
+        "app_name": "ひろば",
+        "active": "rooms",
+    }
+    return templates.TemplateResponse("parent/rooms.html", context)
+
+
+@app.get("/parent/promises", response_class=HTMLResponse)
+async def parent_promises_page(request: Request):
+    """遊ぶ約束の予定を確認（お約束一覧・承認フロー）"""
+    context = {
+        "request": request,
+        "app_name": "ひろば",
+        "active": "promises",
+    }
+    return templates.TemplateResponse("parent/promises.html", context)
+
+
+@app.get("/parent/notifications", response_class=HTMLResponse)
+async def parent_notifications_page(request: Request):
+    """アプリの通知設定"""
+    context = {
+        "request": request,
+        "app_name": "ひろば",
+        "active": "notifications",
+    }
+    return templates.TemplateResponse("parent/notifications.html", context)
+
+
+@app.get("/parent/children/new", response_class=HTMLResponse)
+async def parent_children_new_page(request: Request):
+    """キッズアカウントの追加"""
+    context = {
+        "request": request,
+        "app_name": "ひろば",
+        "active": "children_new",
+    }
+    return templates.TemplateResponse("parent/children_new.html", context)
 
 
 # ------------------------------------------------------------------

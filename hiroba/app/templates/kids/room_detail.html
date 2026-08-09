@@ -1,0 +1,484 @@
+{% extends "kids/base.html" %}
+
+{% block header %}
+<header class="hiroba-header hiroba-room-header">
+  <a href="/kids/rooms" class="hiroba-back-btn" aria-label="おへやいちらんに もどる">⬅️</a>
+  <div class="hiroba-room-header-info" id="room-header-info">
+    <span class="hiroba-room-header-icon">🏠</span>
+    <span class="hiroba-room-header-name">よみこみちゅう…</span>
+  </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div id="room-root" data-room-id="{{ room_id }}">
+
+  <!-- ひろば（みるへや） -->
+  <div class="hiroba-room-panel is-active" data-panel="hiroba">
+    <div id="room-posts-root">
+      <div class="hiroba-loading">よみこみちゅう… 🌀</div>
+    </div>
+  </div>
+
+  <!-- つくる（つくるへや） -->
+  <div class="hiroba-room-panel" data-panel="tsukuru" style="display:none;">
+    <div class="hiroba-card">
+      <div class="hiroba-section-title">📷 写真をえらぶ（にんい）</div>
+      <input type="file" id="room-photo-input" accept="image/*" style="display:none;">
+      <button type="button" id="room-photo-pick-btn" class="hiroba-btn hiroba-btn--blue">📷 しゃしんをえらぶ</button>
+      <img id="room-photo-preview" class="hiroba-photo-preview" style="display:none;">
+      <button type="button" id="room-photo-remove-btn" class="hiroba-btn hiroba-btn--pink" style="display:none; margin-top:10px;">❌ しゃしんをやめる</button>
+    </div>
+
+    <div class="hiroba-card">
+      <div class="hiroba-section-title">✏️ メッセージをかく（にんい）</div>
+      <textarea id="room-message-input" class="hiroba-textarea" rows="3" placeholder="みんなに つたえたいこと…"></textarea>
+    </div>
+
+    <div class="hiroba-card">
+      <div class="hiroba-section-title">😆 スタンプをツカウ（にんい）</div>
+      <div class="hiroba-stamp-picker" id="room-stamp-picker"></div>
+    </div>
+
+    <button type="button" id="room-post-submit-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--orange hiroba-submit-btn">
+      <span class="hiroba-btn-icon">📮</span> 投稿する！
+    </button>
+    <div id="room-post-error" class="hiroba-auth-error"></div>
+  </div>
+
+  <!-- やくそく（約束をするへや） -->
+  <div class="hiroba-room-panel" data-panel="yakusoku" style="display:none;">
+    <div class="hiroba-card" style="text-align:center;">
+      <div class="hiroba-section-title" style="justify-content:center;">🤝 遊ぶ約束をしよう！</div>
+      <button type="button" id="open-room-promise-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--green">
+        <span class="hiroba-btn-icon">✨</span> やくそくを つくる
+      </button>
+    </div>
+
+    <div id="room-promise-list">
+      <div class="hiroba-loading">よみこみちゅう… 🌀</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- やくそく作成モーダル -->
+<div id="room-promise-modal" class="hiroba-modal-overlay" style="display:none;">
+  <div class="hiroba-modal">
+    <div style="text-align:center; font-size:20px; font-weight:700;">🤝 遊ぶ約束をしよう！</div>
+
+    <div class="hiroba-promise-field">
+      <div class="hiroba-promise-field-label">📅 いつ？</div>
+      <input id="room-promise-when" class="hiroba-auth-input" type="text" placeholder="あした・どようび など">
+    </div>
+    <div class="hiroba-promise-field">
+      <div class="hiroba-promise-field-label">🏠 どこで？</div>
+      <input id="room-promise-where" class="hiroba-auth-input" type="text" placeholder="こうえん・うち など">
+    </div>
+    <div class="hiroba-promise-field">
+      <div class="hiroba-promise-field-label">🎮 なにをする？</div>
+      <input id="room-promise-what" class="hiroba-auth-input" type="text" placeholder="サッカー・ゲーム など">
+    </div>
+
+    <div id="room-promise-error" class="hiroba-auth-error"></div>
+    <button type="button" id="room-promise-submit-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--green">
+      <span class="hiroba-btn-icon">📨</span> つくる！
+    </button>
+    <button type="button" id="room-promise-cancel-btn" class="hiroba-btn hiroba-btn--pink">やめる</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block nav %}
+<nav class="hiroba-nav" id="room-tabs">
+  <button type="button" class="hiroba-nav-item is-active" data-nav-panel="hiroba">
+    <span class="hiroba-nav-icon">&#x1F3DE;&#xFE0F;</span>
+    <span class="hiroba-nav-label">ひろば</span>
+  </button>
+  <button type="button" class="hiroba-nav-item" data-nav-panel="tsukuru">
+    <span class="hiroba-nav-icon">&#x1F3A8;</span>
+    <span class="hiroba-nav-label">つくる</span>
+  </button>
+  <button type="button" class="hiroba-nav-item" data-nav-panel="yakusoku">
+    <span class="hiroba-nav-icon">&#x1F91D;</span>
+    <span class="hiroba-nav-label">やくそく</span>
+  </button>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var roomId = document.getElementById("room-root").getAttribute("data-room-id");
+  var REACTIONS = [
+    { type: "yabai", emoji: "🔥", label: "やばい！" },
+    { type: "omoshiroi", emoji: "🤣", label: "おもしろい！" },
+    { type: "sugoi", emoji: "👏", label: "すごい！" },
+    { type: "suteki", emoji: "⭐", label: "すてき！" }
+  ];
+  var currentUser = null;
+
+  /* -------------------- タブ切り替え -------------------- */
+  var panels = document.querySelectorAll(".hiroba-room-panel");
+  var navBtns = document.querySelectorAll("#room-tabs [data-nav-panel]");
+
+  function showPanel(name) {
+    panels.forEach(function (p) {
+      p.style.display = p.getAttribute("data-panel") === name ? "block" : "none";
+    });
+    navBtns.forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-nav-panel") === name);
+    });
+    if (name === "hiroba") loadRoomPosts();
+    if (name === "yakusoku") loadRoomPromises();
+  }
+
+  navBtns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      showPanel(btn.getAttribute("data-nav-panel"));
+    });
+  });
+
+  /* -------------------- ヘッダー：おへや情報 -------------------- */
+  async function loadRoomHeader() {
+    try {
+      var data = await Hiroba.api("/api/rooms/" + roomId);
+      var room = data.room;
+      var info = document.getElementById("room-header-info");
+      info.innerHTML =
+        '<span class="hiroba-room-header-icon">' + (room.icon || "🏠") + '</span>' +
+        '<span class="hiroba-room-header-name">' + Hiroba.escapeHtml(room.name) + '</span>';
+    } catch (e) {
+      if (e.status === 404) {
+        window.location.href = "/kids/rooms";
+      }
+    }
+  }
+
+  /* -------------------- ひろば（みるへや） -------------------- */
+  function renderRoomPost(post) {
+    var mediaHtml = "";
+    if (post.photo_url) {
+      mediaHtml = '<div class="hiroba-post-media-wrap"><img class="hiroba-card-media" src="' + post.photo_url + '" alt="しゃしん"></div>';
+    }
+    var moodHtml = "";
+    if (post.mood_stamp) {
+      moodHtml = '<span class="hiroba-post-mood">' + Hiroba.escapeHtml(post.mood_stamp) + '</span>';
+    }
+    var messageHtml = "";
+    if (post.message) {
+      messageHtml = '<div class="hiroba-post-message">' + Hiroba.escapeHtml(post.message) + '</div>';
+    }
+    var deleteHtml = "";
+    if (post.can_delete) {
+      deleteHtml = '<button type="button" class="hiroba-post-delete-btn" data-delete-post-id="' + post.id + '" aria-label="けす">🗑️</button>';
+    }
+    var reactionsHtml = REACTIONS.map(function (r) {
+      var count = (post.reactions && post.reactions[r.type]) || 0;
+      return (
+        '<button type="button" class="hiroba-reaction-btn hiroba-reaction-btn--' + r.type + '" data-reaction-type="' + r.type + '">' +
+        '  <span class="emoji">' + r.emoji + '</span>' +
+        '  <span class="count">' + count + '</span>' +
+        '  <span class="hiroba-reaction-label">' + r.label + '</span>' +
+        '</button>'
+      );
+    }).join("");
+
+    return (
+      '<div class="hiroba-card hiroba-post-card hiroba-fade-in" data-post-id="' + post.id + '">' +
+      '  <div class="hiroba-post-header">' +
+      '    <div class="hiroba-post-avatar">' + (post.author_avatar || "🧒") + '</div>' +
+      '    <div>' +
+      '      <div class="hiroba-post-author">' + Hiroba.escapeHtml(post.author_name) + '</div>' +
+      '      <div class="hiroba-post-time">' + post.created_at + '</div>' +
+      '    </div>' +
+      '    ' + moodHtml +
+      '    ' + deleteHtml +
+      '  </div>' +
+      '  ' + mediaHtml +
+      '  ' + messageHtml +
+      '  <div class="hiroba-reaction-bar hiroba-reaction-bar--grid">' + reactionsHtml + '</div>' +
+      '</div>'
+    );
+  }
+
+  async function loadRoomPosts() {
+    var root = document.getElementById("room-posts-root");
+    try {
+      var data = await Hiroba.api("/api/rooms/" + roomId + "/posts");
+      var posts = (data && data.posts) || [];
+      if (posts.length === 0) {
+        root.innerHTML =
+          '<div class="hiroba-card hiroba-empty-state">' +
+          '  <span class="emoji">📭</span>' +
+          '  まだ とうこうが ないよ！<br>「つくる」から とうこうしてみよう！' +
+          '</div>';
+        return;
+      }
+      root.innerHTML = posts.map(renderRoomPost).join("");
+      root.querySelectorAll(".hiroba-reaction-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { onReactionClick(btn); });
+      });
+      root.querySelectorAll(".hiroba-post-delete-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { onDeleteClick(btn); });
+      });
+    } catch (e) {
+      if (e.status === 404) {
+        window.location.href = "/kids/rooms";
+        return;
+      }
+      root.innerHTML = '<div class="hiroba-card hiroba-empty-state"><span class="emoji">😢</span>よみこみに しっぱいしちゃった…</div>';
+    }
+  }
+
+  async function onReactionClick(btn) {
+    var card = btn.closest(".hiroba-post-card");
+    var postId = card.getAttribute("data-post-id");
+    var reactionType = btn.getAttribute("data-reaction-type");
+    Hiroba.bounce(btn);
+    var countEl = btn.querySelector(".count");
+    countEl.textContent = parseInt(countEl.textContent || "0", 10) + 1;
+    Hiroba.bump(countEl);
+    try {
+      var fd = new FormData();
+      fd.append("reaction_type", reactionType);
+      var data = await Hiroba.api("/api/posts/" + postId + "/react", { method: "POST", body: fd });
+      REACTIONS.forEach(function (r) {
+        var el = card.querySelector('[data-reaction-type="' + r.type + '"] .count');
+        if (el && data.reactions) el.textContent = data.reactions[r.type];
+      });
+    } catch (e) {
+      /* noop */
+    }
+  }
+
+  async function onDeleteClick(btn) {
+    var card = btn.closest(".hiroba-post-card");
+    if (!card) return;
+    var postId = card.getAttribute("data-post-id");
+    btn.disabled = true;
+    try {
+      await Hiroba.api("/api/rooms/" + roomId + "/posts/" + postId + "/delete", { method: "POST" });
+      card.classList.add("is-removing");
+      setTimeout(function () { if (card.parentNode) card.parentNode.removeChild(card); }, 280);
+    } catch (e) {
+      btn.disabled = false;
+    }
+  }
+
+  /* -------------------- つくる（つくるへや） -------------------- */
+  var roomPhotoInput = document.getElementById("room-photo-input");
+  var roomPhotoPreview = document.getElementById("room-photo-preview");
+  var roomPhotoFile = null;
+
+  document.getElementById("room-photo-pick-btn").addEventListener("click", function () {
+    roomPhotoInput.click();
+  });
+  roomPhotoInput.addEventListener("change", function () {
+    var file = roomPhotoInput.files && roomPhotoInput.files[0];
+    if (!file) return;
+    roomPhotoFile = file;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      roomPhotoPreview.src = e.target.result;
+      roomPhotoPreview.style.display = "block";
+      document.getElementById("room-photo-remove-btn").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById("room-photo-remove-btn").addEventListener("click", function () {
+    roomPhotoFile = null;
+    roomPhotoInput.value = "";
+    roomPhotoPreview.style.display = "none";
+    this.style.display = "none";
+  });
+
+  var ROOM_STAMPS = [
+    { emoji: "🎉", label: "できた！" },
+    { emoji: "😆", label: "たのしい！" },
+    { emoji: "👀", label: "みてみて！" },
+    { emoji: "😊", label: "うれしい！" },
+    { emoji: "😲", label: "びっくり！" }
+  ];
+  var selectedRoomStamp = null;
+
+  (function buildRoomStampPicker() {
+    var wrap = document.getElementById("room-stamp-picker");
+    ROOM_STAMPS.forEach(function (s) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "hiroba-stamp hiroba-stamp-btn";
+      btn.innerHTML = '<span style="font-size:34px;">' + s.emoji + '</span><span>' + s.label + '</span>';
+      btn.addEventListener("click", function () {
+        var isSame = selectedRoomStamp === (s.emoji + " " + s.label);
+        wrap.querySelectorAll(".hiroba-stamp").forEach(function (el) { el.classList.remove("is-selected"); });
+        if (isSame) {
+          selectedRoomStamp = null;
+        } else {
+          selectedRoomStamp = s.emoji + " " + s.label;
+          btn.classList.add("is-selected");
+        }
+      });
+      wrap.appendChild(btn);
+    });
+  })();
+
+  document.getElementById("room-post-submit-btn").addEventListener("click", async function () {
+    var errorEl = document.getElementById("room-post-error");
+    errorEl.textContent = "";
+    var message = document.getElementById("room-message-input").value.trim();
+
+    if (!message && !selectedRoomStamp && !roomPhotoFile) {
+      errorEl.textContent = "しゃしん・メッセージ・スタンプの どれかを えらんでね！";
+      return;
+    }
+
+    var btn = this;
+    btn.disabled = true;
+    var originalHtml = btn.innerHTML;
+    btn.innerHTML = '<span class="hiroba-btn-icon">⏳</span> とうこうちゅう…';
+    try {
+      var fd = new FormData();
+      fd.append("message", message);
+      fd.append("stamps", selectedRoomStamp || "");
+      if (roomPhotoFile) fd.append("image", roomPhotoFile, roomPhotoFile.name || "photo.png");
+      await Hiroba.api("/api/rooms/" + roomId + "/posts/create", { method: "POST", body: fd });
+
+      document.getElementById("room-message-input").value = "";
+      selectedRoomStamp = null;
+      document.querySelectorAll("#room-stamp-picker .hiroba-stamp").forEach(function (el) { el.classList.remove("is-selected"); });
+      roomPhotoFile = null;
+      roomPhotoInput.value = "";
+      roomPhotoPreview.style.display = "none";
+      document.getElementById("room-photo-remove-btn").style.display = "none";
+
+      showPanel("hiroba");
+    } catch (e) {
+      errorEl.textContent = e.message || "とうこうに しっぱいしちゃった…";
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  });
+
+  /* -------------------- やくそく（約束をするへや） -------------------- */
+  function renderRoomPromiseCard(p) {
+    var membersHtml = p.members.map(function (m) {
+      var isMe = currentUser && m.kid_id === currentUser.id;
+      var checkHtml = m.approved
+        ? '<span class="hiroba-promise-check">✔</span>'
+        : '';
+      return (
+        '<div class="hiroba-promise-member' + (isMe ? " is-me" : "") + '">' +
+        '  <div class="hiroba-promise-member-avatar">' + (m.kid_avatar || "🧒") + checkHtml + '</div>' +
+        '  <div class="hiroba-promise-member-name">' + Hiroba.escapeHtml(m.kid_name || "") + '</div>' +
+        '</div>'
+      );
+    }).join("");
+
+    var myApproved = false;
+    if (currentUser) {
+      var mine = p.members.find(function (m) { return m.kid_id === currentUser.id; });
+      myApproved = mine ? mine.approved : false;
+    }
+
+    var detailBits = [];
+    if (p.when_text) detailBits.push("📅 " + p.when_text);
+    if (p.where_text) detailBits.push("🏠 " + p.where_text);
+    if (p.what_text) detailBits.push("🎮 " + p.what_text);
+
+    return (
+      '<div class="hiroba-card hiroba-promise-card hiroba-fade-in" data-promise-id="' + p.id + '">' +
+      '  <div class="hiroba-promise-detail">' + Hiroba.escapeHtml(detailBits.join("　")) + '</div>' +
+      '  <div class="hiroba-promise-members">' + membersHtml + '</div>' +
+      '  <button type="button" class="hiroba-btn ' + (myApproved ? "hiroba-btn--green" : "hiroba-btn--orange") + ' hiroba-promise-toggle-btn" data-promise-toggle-id="' + p.id + '">' +
+      '    <span class="hiroba-btn-icon">' + (myApproved ? "✔" : "🙋") + '</span> ' + (myApproved ? "さんか するよ！" : "さんかする！") +
+      '  </button>' +
+      '</div>'
+    );
+  }
+
+  async function loadRoomPromises() {
+    var root = document.getElementById("room-promise-list");
+    try {
+      var data = await Hiroba.api("/api/rooms/" + roomId + "/promises");
+      var promises = (data && data.promises) || [];
+      if (promises.length === 0) {
+        root.innerHTML =
+          '<div class="hiroba-card hiroba-empty-state">' +
+          '  <span class="emoji">🤝</span>' +
+          '  まだ やくそくが ないよ！' +
+          '</div>';
+        return;
+      }
+      root.innerHTML = promises.map(renderRoomPromiseCard).join("");
+      root.querySelectorAll("[data-promise-toggle-id]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          toggleRoomPromise(parseInt(btn.getAttribute("data-promise-toggle-id"), 10));
+        });
+      });
+    } catch (e) {
+      if (e.status === 404) {
+        window.location.href = "/kids/rooms";
+        return;
+      }
+      root.innerHTML = '<div class="hiroba-card hiroba-empty-state"><span class="emoji">😢</span>よみこみに しっぱいしちゃった…</div>';
+    }
+  }
+
+  async function toggleRoomPromise(promiseId) {
+    try {
+      await Hiroba.api("/api/rooms/promises/" + promiseId + "/toggle", { method: "POST" });
+      loadRoomPromises();
+    } catch (e) {
+      /* noop */
+    }
+  }
+
+  var roomPromiseModal = document.getElementById("room-promise-modal");
+  document.getElementById("open-room-promise-btn").addEventListener("click", function () {
+    document.getElementById("room-promise-when").value = "";
+    document.getElementById("room-promise-where").value = "";
+    document.getElementById("room-promise-what").value = "";
+    document.getElementById("room-promise-error").textContent = "";
+    roomPromiseModal.style.display = "flex";
+  });
+  document.getElementById("room-promise-cancel-btn").addEventListener("click", function () {
+    roomPromiseModal.style.display = "none";
+  });
+  document.getElementById("room-promise-submit-btn").addEventListener("click", async function () {
+    var errorEl = document.getElementById("room-promise-error");
+    errorEl.textContent = "";
+    var whenText = document.getElementById("room-promise-when").value.trim();
+    var whereText = document.getElementById("room-promise-where").value.trim();
+    var whatText = document.getElementById("room-promise-what").value.trim();
+    if (!whenText && !whereText && !whatText) {
+      errorEl.textContent = "いつ・どこで・なにをする か きめてね！";
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    try {
+      var fd = new FormData();
+      fd.append("when_text", whenText);
+      fd.append("where_text", whereText);
+      fd.append("what_text", whatText);
+      await Hiroba.api("/api/rooms/" + roomId + "/promises/create", { method: "POST", body: fd });
+      roomPromiseModal.style.display = "none";
+      loadRoomPromises();
+    } catch (e) {
+      errorEl.textContent = e.message || "つくるのに しっぱいしちゃった…";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  Hiroba.requireLogin().then(function (user) {
+    if (!user) return;
+    currentUser = user;
+    loadRoomHeader();
+    loadRoomPosts();
+  });
+})();
+</script>
+{% endblock %}

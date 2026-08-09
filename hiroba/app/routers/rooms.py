@@ -10,14 +10,20 @@
   投稿・音声・メンバー情報などを絶対に返さない
   （メンバーでないことが分かってしまう403も避け、存在自体を明かさない）。
 
+おへやの作成上限:
+- 1人のキッズが作成できる（かつ現在も正式メンバーである）おへやは、
+  最大 MAX_ROOMS_PER_KID(=5) 個までとする。超えて作成しようとした場合は
+  400エラーで、キッズにも伝わるやさしいメッセージを返す。
+
 主なエンドポイント:
 - GET  /api/rooms/my-rooms                          : わたしのおへや一覧
 - GET  /api/rooms/invitations                        : 自分宛のおさそい一覧
-- POST /api/rooms/create                             : おへやを つくる
+- POST /api/rooms/create                             : おへやを つくる（最大5つまで）
 - POST /api/rooms/{room_id}/invite                   : おともだちを しょうたいする
 - POST /api/rooms/invitations/{membership_id}/respond       : キッズ本人の応答
 - POST /api/rooms/invitations/{membership_id}/parent-approve: 保護者の承認
 - GET  /api/rooms/parent/pending-approvals           : 保護者向け：承認待ち一覧
+- GET  /api/rooms/parent/overview                    : 保護者向け：参加中のおへや＆メンバー一覧
 - GET  /api/rooms/{room_id}                          : おへや詳細（正式メンバーのみ）
 - POST /api/rooms/{room_id}/disband                  : おへやを たたむ（解散）
 
@@ -43,6 +49,12 @@ from app.database import get_db
 from app.models import Room, RoomMember, User
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
+
+# キッズ1人が作成・所有できるおへやの最大数（「最大5つまでつくれるよ」の注記に対応）
+MAX_ROOMS_PER_KID = 5
+MSG_ROOM_LIMIT_REACHED = "おへやは さいだい {limit}つまで つくれるよ！".format(
+    limit=MAX_ROOMS_PER_KID
+)
 
 
 def _can_disband(room: Room, viewer: User | None) -> bool:
@@ -102,6 +114,15 @@ def _get_active_room(db: Session, room_id: int) -> Room | None:
     )
 
 
+def _count_owned_active_rooms(db: Session, kid_id: int) -> int:
+    """キッズが作成し、かつ現在も有効な（解散していない）おへやの数を数える"""
+    return (
+        db.query(Room)
+        .filter(Room.created_by_kid_id == kid_id, Room.is_active == True)  # noqa: E712
+        .count()
+    )
+
+
 # ------------------------------------------------------------------
 # わたしのおへや（自分が正式メンバーのおへやだけ）
 # ------------------------------------------------------------------
@@ -124,6 +145,8 @@ async def my_rooms(
         {
             "success": True,
             "rooms": [_serialize_room_summary(r, user) for r in rooms],
+            "max_rooms": MAX_ROOMS_PER_KID,
+            "owned_room_count": _count_owned_active_rooms(db, user.id),
         }
     )
 
@@ -165,7 +188,7 @@ async def list_invitations(
 
 
 # ------------------------------------------------------------------
-# おへやを つくる（作成者は自動的に正式メンバーになる）
+# おへやを つくる（作成者は自動的に正式メンバーになる。最大5つまで）
 # ------------------------------------------------------------------
 @router.post("/create")
 async def create_room(
@@ -176,6 +199,9 @@ async def create_room(
 ):
     if user is None or user.role != "kids":
         raise HTTPException(status_code=401, detail="キッズとしてログインしてください")
+
+    if _count_owned_active_rooms(db, user.id) >= MAX_ROOMS_PER_KID:
+        raise HTTPException(status_code=400, detail=MSG_ROOM_LIMIT_REACHED)
 
     room = Room(
         name=(name or "").strip()[:50] or "おへや",
@@ -370,6 +396,56 @@ async def parent_pending_approvals(
         if m.room and m.room.is_active
     ]
     return JSONResponse({"success": True, "approvals": approvals})
+
+
+# ------------------------------------------------------------------
+# 保護者向け：自分の子ども達が参加している「おへや」と、その参加メンバー一覧
+# （「おへやの参加メンバーの確認」ナビゲーション項目に対応）
+# ------------------------------------------------------------------
+@router.get("/parent/overview")
+async def parent_rooms_overview(
+    parent: User | None = Depends(get_current_parent), db: Session = Depends(get_db)
+):
+    if parent is None:
+        raise HTTPException(status_code=401, detail="保護者としてログインしてください")
+
+    kid_ids = [
+        k.id
+        for k in db.query(User)
+        .filter(User.parent_id == parent.id, User.role == "kids")
+        .all()
+    ]
+    if not kid_ids:
+        return JSONResponse({"success": True, "rooms": []})
+
+    memberships = (
+        db.query(RoomMember)
+        .options(joinedload(RoomMember.room))
+        .filter(RoomMember.kid_id.in_(kid_ids), RoomMember.status == "active")
+        .all()
+    )
+
+    rooms_by_id: dict[int, Room] = {}
+    for m in memberships:
+        if m.room and m.room.is_active:
+            rooms_by_id[m.room.id] = m.room
+
+    result = []
+    for room in rooms_by_id.values():
+        active_members = (
+            db.query(RoomMember)
+            .options(joinedload(RoomMember.kid))
+            .filter(RoomMember.room_id == room.id, RoomMember.status == "active")
+            .all()
+        )
+        result.append(
+            {
+                "room": _serialize_room_summary(room, parent),
+                "members": [_serialize_member(m) for m in active_members],
+            }
+        )
+
+    return JSONResponse({"success": True, "rooms": result})
 
 
 # ------------------------------------------------------------------

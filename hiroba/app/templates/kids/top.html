@@ -1,0 +1,22 @@
+{% extends "kids/base.html" %}
+
+{% block nav %}{% endblock %}
+
+{% block content %}
+<div class="hiroba-top-wrap">
+  <div class="hiroba-top-title">🏞️ ひろば</div>
+  <p class="hiroba-top-sub">つかう ひとを えらんでね！</p>
+
+  <a href="/kids/rooms" class="hiroba-top-card hiroba-top-card--room">
+    <span class="hiroba-top-card-emoji">🏠</span>
+    <span class="hiroba-top-card-title">おへや</span>
+    <span class="hiroba-top-card-desc">おともだちと つかうところ</span>
+  </a>
+
+  <a href="/parent/dashboard" class="hiroba-top-card hiroba-top-card--parent">
+    <span class="hiroba-top-card-emoji">👨‍👩‍👧</span>
+    <span class="hiroba-top-card-title">おうちの人の部屋</span>
+    <span class="hiroba-top-card-desc">おうちの人が みるところ</span>
+  </a>
+</div>
+{% endblock %}

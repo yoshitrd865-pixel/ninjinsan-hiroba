@@ -8,16 +8,19 @@
 </head>
 <body>
   <div class="hiroba-app">
+    {% block header %}
     <header class="hiroba-header">
-      <a href="/kids/home" style="text-decoration:none;">
+      <a href="/" style="text-decoration:none;">
         <span class="hiroba-logo">🏞️ ひろば</span>
       </a>
     </header>
+    {% endblock %}
 
     <main class="hiroba-main">
       {% block content %}{% endblock %}
     </main>
 
+    {% block nav %}
     <nav class="hiroba-nav">
       <a href="/kids/home" class="hiroba-nav-item {% if active == 'home' %}is-active{% endif %}">
         <span class="hiroba-nav-icon">&#x1F3DE;&#xFE0F;</span>
@@ -42,7 +45,9 @@
       </a>
 
     </nav>
+    {% endblock %}
   </div>
+
 
   <script src="/static/js/kids_common.js"></script>
   {% block scripts %}{% endblock %}

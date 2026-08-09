@@ -41,6 +41,13 @@ class Post(Base):
     # 気分スタンプ（例: "😆", "happy" など。タップだけで選べる）
     mood_stamp = Column(String(20), nullable=True)
 
+    # ひとことメッセージ（「おへや」の“つくる”タブなど、文字が書けるキッズ向けの任意入力）
+    message = Column(Text, nullable=True)
+
+    # 「おへや」内に投稿された場合の room_id（NULL=グローバルな「ひろば」への投稿）
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True, index=True)
+
+
     # Whisper（音声認識）でボイスメモをテキスト化した内容。
     # キッズ自身は文字を読み書きしないため、保護者確認・検索・モデレーション用途。
     whisper_text = Column(Text, nullable=True)

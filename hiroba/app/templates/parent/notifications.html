@@ -1,0 +1,82 @@
+{% extends "parent/base.html" %}
+
+{% block content %}
+<div class="hiroba-card">
+  <h2 style="margin-top:0; font-size:18px;">🔔 アプリの通知設定</h2>
+  <p style="color: var(--hiroba-text-soft); font-size:14px;">
+    お子さまの「おへや」への参加希望や、「遊ぶ約束」の提案があったときに、
+    LINE通知でお知らせするタイミングを設定できます。
+  </p>
+
+  <div id="notification-settings" style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
+    <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer;">
+      <input type="checkbox" id="notify-room-invite" style="width:22px; height:22px;">
+      <span style="flex:1;">
+        <strong style="display:block; font-size:15px;">おへやの参加リクエスト</strong>
+        <span style="font-size:13px; color:var(--hiroba-text-soft);">お子さまが「おへや」への参加を希望したときに通知</span>
+      </span>
+    </label>
+
+    <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer;">
+      <input type="checkbox" id="notify-promise" style="width:22px; height:22px;">
+      <span style="flex:1;">
+        <strong style="display:block; font-size:15px;">遊ぶ約束の提案</strong>
+        <span style="font-size:13px; color:var(--hiroba-text-soft);">「遊ぶ約束」の新しい提案があったときに通知</span>
+      </span>
+    </label>
+
+    <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer;">
+      <input type="checkbox" id="notify-daily-summary" style="width:22px; height:22px;">
+      <span style="flex:1;">
+        <strong style="display:block; font-size:15px;">1日のまとめ通知</strong>
+        <span style="font-size:13px; color:var(--hiroba-text-soft);">お子さまの投稿・活動を1日1回まとめて通知</span>
+      </span>
+    </label>
+  </div>
+
+  <div id="notification-saved-note" style="text-align:center; color: var(--hiroba-green); font-weight:700; min-height:1.4em; margin-top:14px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var STORAGE_KEY = "hiroba_notification_settings";
+  var checkboxes = {
+    notify_room_invite: document.getElementById("notify-room-invite"),
+    notify_promise: document.getElementById("notify-promise"),
+    notify_daily_summary: document.getElementById("notify-daily-summary")
+  };
+
+  function loadSettings() {
+    var saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    } catch (e) {
+      saved = {};
+    }
+    Object.keys(checkboxes).forEach(function (key) {
+      checkboxes[key].checked = saved[key] !== undefined ? !!saved[key] : true;
+    });
+  }
+
+  function saveSettings() {
+    var data = {};
+    Object.keys(checkboxes).forEach(function (key) {
+      data[key] = checkboxes[key].checked;
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+    var note = document.getElementById("notification-saved-note");
+    note.textContent = "✅ 設定を保存しました";
+    setTimeout(function () { note.textContent = ""; }, 2000);
+  }
+
+  Object.keys(checkboxes).forEach(function (key) {
+    checkboxes[key].addEventListener("change", saveSettings);
+  });
+
+  loadSettings();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends "parent/base.html" %}
+
+{% block content %}
+<div class="hiroba-card">
+  <h2 style="margin-top:0; font-size:18px;">💌 おへや さんかの承認</h2>
+  <p style="color: var(--hiroba-text-soft); font-size:14px;">
+    お子さまが「さんかする」を選んだ、おへやへの参加リクエストです。
+  </p>
+  <div id="room-approval-list">
+    <div class="hiroba-loading">よみこみちゅう…</div>
+  </div>
+</div>
+
+<div class="hiroba-card">
+  <h2 style="margin-top:0; font-size:18px;">🏠 参加中のおへや・メンバー</h2>
+  <p style="color: var(--hiroba-text-soft); font-size:14px;">
+    お子さまが参加している「おへや」と、そのメンバー一覧です。
+  </p>
+  <div id="room-overview-list">
+    <div class="hiroba-loading">よみこみちゅう…</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  async function loadRoomApprovals() {
+    var list = document.getElementById("room-approval-list");
+    try {
+      var data = await Hiroba.api("/api/rooms/parent/pending-approvals");
+      var approvals = (data && data.approvals) || [];
+      if (approvals.length === 0) {
+        list.innerHTML = "<p>承認待ちのおさそいはありません。</p>";
+        return;
+      }
+      list.innerHTML = approvals.map(renderApprovalRow).join("");
+      list.querySelectorAll(".room-approve-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { respondRoom(btn.dataset.membershipId, "approve"); });
+      });
+      list.querySelectorAll(".room-reject-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { respondRoom(btn.dataset.membershipId, "reject"); });
+      });
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      list.innerHTML = "<p>読み込みに失敗しました。</p>";
+    }
+  }
+
+  function renderApprovalRow(a) {
+    var roomLabel = a.room ? (a.room.icon || "🏠") + " " + Hiroba.escapeHtml(a.room.name) : "おへや";
+    return (
+      '<div style="border:1px solid #eee; border-radius:12px; padding:14px; margin-bottom:12px;">' +
+      '  <div style="font-weight:700;">' + Hiroba.escapeHtml(a.kid_name || "") + ' さんが「' + roomLabel + '」への参加を希望しています</div>' +
+      '  <div style="display:flex; gap:8px; margin-top:10px;">' +
+      '    <button type="button" class="hiroba-btn hiroba-btn--green room-approve-btn" data-membership-id="' + a.membership_id + '" style="min-height:44px; font-size:16px; flex:1;">承認する</button>' +
+      '    <button type="button" class="hiroba-btn hiroba-btn--pink room-reject-btn" data-membership-id="' + a.membership_id + '" style="min-height:44px; font-size:16px; flex:1;">見送る</button>' +
+      '  </div>' +
+      '</div>'
+    );
+  }
+
+  async function respondRoom(membershipId, decision) {
+    try {
+      var fd = new FormData();
+      fd.append("decision", decision);
+      await Hiroba.api("/api/rooms/invitations/" + membershipId + "/parent-approve", { method: "POST", body: fd });
+      loadRoomApprovals();
+    } catch (e) {
+      alert(e.message || "処理に失敗しました");
+    }
+  }
+
+  function renderMemberChip(m) {
+    return (
+      '<div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:64px;">' +
+      '  <div class="hiroba-post-avatar" style="width:48px; height:48px; font-size:24px;">' + (m.kid_avatar || "🧒") + '</div>' +
+      '  <div style="font-size:12px; text-align:center;">' + Hiroba.escapeHtml(m.kid_name || "") + '</div>' +
+      '</div>'
+    );
+  }
+
+  function renderRoomOverview(entry) {
+    var room = entry.room;
+    var membersHtml = (entry.members || []).map(renderMemberChip).join("");
+    return (
+      '<div style="border:1px solid #eee; border-radius:12px; padding:14px; margin-bottom:12px;">' +
+      '  <div style="font-weight:700; font-size:16px;">' + (room.icon || "🏠") + " " + Hiroba.escapeHtml(room.name) + '</div>' +
+      '  <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">' + membersHtml + '</div>' +
+      '</div>'
+    );
+  }
+
+  async function loadRoomOverview() {
+    var list = document.getElementById("room-overview-list");
+    try {
+      var data = await Hiroba.api("/api/rooms/parent/overview");
+      var rooms = (data && data.rooms) || [];
+      if (rooms.length === 0) {
+        list.innerHTML = "<p>まだ参加中のおへやはありません。</p>";
+        return;
+      }
+      list.innerHTML = rooms.map(renderRoomOverview).join("");
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      list.innerHTML = "<p>読み込みに失敗しました。</p>";
+    }
+  }
+
+  loadRoomApprovals();
+  loadRoomOverview();
+})();
+</script>
+{% endblock %}

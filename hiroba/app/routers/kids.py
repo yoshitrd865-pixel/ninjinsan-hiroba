@@ -31,10 +31,31 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.auth import get_active_user
 from app.database import get_db
-from app.models import Post, User
+from app.models import Post, RoomMember, User
 from app.models.reaction import REACTION_LABELS
 from app.paths import UPLOAD_DIR
 from app.services.whisper_service import transcribe_audio
+
+
+def _require_active_room_membership(db: Session, room_id: int, kid_id: int) -> None:
+    """おへや内投稿・タイムラインの操作前に、正式メンバーであることを確認する
+
+    メンバーでない場合は、おへやの存在自体を明かさないため404を返す。
+    """
+    is_member = (
+        db.query(RoomMember)
+        .filter(
+            RoomMember.room_id == room_id,
+            RoomMember.kid_id == kid_id,
+            RoomMember.status == "active",
+        )
+        .first()
+        is not None
+    )
+    if not is_member:
+        raise HTTPException(status_code=404, detail="おへやが みつかりません")
+
+
 
 router = APIRouter(prefix="/api/posts", tags=["posts"])
 
@@ -207,14 +228,16 @@ async def get_timeline(
     """
     active_user = _require_active_user(user)
 
+    # グローバルタイムラインには「おへや」内投稿(room_id有り)は含めない
     posts = (
         db.query(Post)
         .options(joinedload(Post.user), joinedload(Post.reactions))
-        .filter(Post.is_hidden == False)  # noqa: E712
+        .filter(Post.is_hidden == False, Post.room_id.is_(None))  # noqa: E712
         .order_by(Post.created_at.desc())
         .limit(limit)
         .all()
     )
+
 
     return JSONResponse(
         {

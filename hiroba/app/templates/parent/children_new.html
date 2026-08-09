@@ -1,0 +1,113 @@
+{% extends "parent/base.html" %}
+
+{% block content %}
+<div class="hiroba-card">
+  <h2 style="margin-top:0; font-size:18px;">➕ キッズアカウントを追加</h2>
+  <p style="color: var(--hiroba-text-soft); font-size:14px;">
+    お子さまのプロフィールを追加します。おなまえとアイコンを選んでください。
+  </p>
+
+  <div style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
+    <input id="kid-name-input" class="hiroba-auth-input" type="text" placeholder="なまえ（たろう など）">
+
+    <div class="hiroba-emoji-grid" id="emoji-grid"></div>
+
+    <div id="add-kid-error" class="hiroba-auth-error"></div>
+    <div id="add-kid-success" style="text-align:center; color:var(--hiroba-green); font-weight:700; min-height:1.4em;"></div>
+
+    <button id="add-kid-submit-btn" class="hiroba-btn hiroba-btn--orange">ついかする</button>
+    <a href="/parent/dashboard" class="hiroba-btn hiroba-btn--pink" style="text-decoration:none;">やめる</a>
+  </div>
+</div>
+
+<div class="hiroba-card">
+  <h2 style="margin-top:0; font-size:16px;">👧🧑 登録済みのキッズ</h2>
+  <div id="kid-list">
+    <div class="hiroba-loading">よみこみちゅう…</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var AVATAR_EMOJIS = ["🐱", "🐶", "🐰", "🦊", "🐻", "🐼", "🦁", "🐸", "🐵", "🐨", "🐯", "🦄"];
+  var selectedEmoji = AVATAR_EMOJIS[0];
+
+  function buildEmojiGrid() {
+    var grid = document.getElementById("emoji-grid");
+    grid.innerHTML = "";
+    AVATAR_EMOJIS.forEach(function (emoji, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "hiroba-emoji-choice" + (i === 0 ? " is-selected" : "");
+      b.textContent = emoji;
+      b.addEventListener("click", function () {
+        selectedEmoji = emoji;
+        grid.querySelectorAll(".hiroba-emoji-choice").forEach(function (el) {
+          el.classList.remove("is-selected");
+        });
+        b.classList.add("is-selected");
+      });
+      grid.appendChild(b);
+    });
+  }
+
+  async function loadKids() {
+    var list = document.getElementById("kid-list");
+    try {
+      var res = await fetch("/api/auth/kids");
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "取得に失敗しました");
+      var kids = data.kids || [];
+      if (kids.length === 0) {
+        list.innerHTML = "<p>まだキッズアカウントがありません。</p>";
+        return;
+      }
+      list.innerHTML = kids.map(function (kid) {
+        return (
+          '<div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #eee;">' +
+          '  <div class="hiroba-post-avatar" style="width:44px; height:44px; font-size:24px;">' + (kid.avatar_icon || "🧒") + '</div>' +
+          '  <div style="font-weight:700;">' + kid.display_name + '</div>' +
+          '</div>'
+        );
+      }).join("");
+    } catch (e) {
+      list.innerHTML = "<p>読み込みに失敗しました。</p>";
+    }
+  }
+
+  document.getElementById("add-kid-submit-btn").addEventListener("click", async function () {
+    var name = document.getElementById("kid-name-input").value.trim();
+    var errorEl = document.getElementById("add-kid-error");
+    var successEl = document.getElementById("add-kid-success");
+    errorEl.textContent = "";
+    successEl.textContent = "";
+    if (!name) {
+      errorEl.textContent = "なまえを 入力してください";
+      return;
+    }
+    var btn = this;
+    btn.disabled = true;
+    try {
+      var fd = new FormData();
+      fd.append("display_name", name);
+      fd.append("avatar_icon", selectedEmoji);
+      var res = await fetch("/api/auth/kids/add", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "ついかに しっぱいしました");
+      document.getElementById("kid-name-input").value = "";
+      successEl.textContent = "✅ 追加しました！";
+      loadKids();
+    } catch (e) {
+      errorEl.textContent = e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  buildEmojiGrid();
+  loadKids();
+})();
+</script>
+{% endblock %}

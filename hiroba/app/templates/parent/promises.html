@@ -1,0 +1,161 @@
+{% extends "parent/base.html" %}
+
+{% block content %}
+<div class="hiroba-card">
+  <h2 style="margin-top:0; font-size:18px;">🤝 遊ぶ約束の確認</h2>
+  <p style="color: var(--hiroba-text-soft); font-size:14px;">
+    お子さまが応募した「遊ぶ約束」を確認し、回答してください。
+    双方の保護者が「いいよ」を選ぶと約束が成立します。
+    （キャンセル率・断った理由などは第三者・お子さまには一切表示されません）
+  </p>
+  <div id="promise-list">
+    <div class="hiroba-loading">よみこみちゅう…</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var LOCATION_LABELS = {
+    home_my: "🏠 うち",
+    home_friend: "🏡 あいてのいえ",
+    school: "🏫 がっこう・こうてい",
+    other: "🎤 そのほか"
+  };
+  var TIME_FRAME_LABELS = {
+    morning: "🌞 ごぜん",
+    afternoon: "🌤 ごご"
+  };
+  var STATUS_LABELS = {
+    pending_parents: "確認中",
+    approved: "約束成立！🎉",
+    cancelled: "見送りになりました",
+  };
+
+  function formatApprovalState(p) {
+    var bits = [];
+    bits.push((p.sender_kid_name || "送信側") + "の保護者: " + (p.sender_parent_approved ? "✅回答済み" : "未回答"));
+    bits.push((p.receiver_kid_name || "受信側") + "の保護者: " + (p.receiver_parent_approved ? "✅回答済み" : "未回答"));
+    return bits.join(" ／ ");
+  }
+
+  async function loadPromises() {
+    var list = document.getElementById("promise-list");
+    try {
+      var data = await Hiroba.api("/api/promises/my-promises");
+      var promises = (data && data.promises) || [];
+      if (promises.length === 0) {
+        list.innerHTML = "<p>まだ約束の提案はありません。</p>";
+        return;
+      }
+      list.innerHTML = promises.map(renderPromiseRow).join("");
+      attachHandlers(list);
+    } catch (e) {
+      if (e.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      list.innerHTML = "<p>読み込みに失敗しました。</p>";
+    }
+  }
+
+  function renderPromiseRow(p) {
+    var detailBits = [];
+    if (p.date) detailBits.push("🗓️ " + p.date);
+    if (TIME_FRAME_LABELS[p.time_frame]) detailBits.push(TIME_FRAME_LABELS[p.time_frame]);
+    if (p.detailed_time) detailBits.push("🕐 " + p.detailed_time);
+    if (LOCATION_LABELS[p.location_type]) detailBits.push(LOCATION_LABELS[p.location_type]);
+
+    var audioHtml = "";
+    if (p.location_audio_url) {
+      audioHtml = '<div style="margin-top:6px;"><audio controls src="' + Hiroba.escapeHtml(p.location_audio_url) + '" style="width:100%; max-width:320px;"></audio></div>';
+    }
+
+    var actionsHtml = "";
+    if (p.status === "pending_parents") {
+      actionsHtml =
+        '<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">' +
+        '  <button type="button" class="hiroba-btn hiroba-btn--green promise-approve-btn" data-promise-id="' + p.id + '" style="min-height:44px; font-size:16px; flex:1;">👌 いいよ</button>' +
+        '  <button type="button" class="hiroba-btn hiroba-btn--blue promise-adjust-btn" data-promise-id="' + p.id + '" style="min-height:44px; font-size:16px; flex:1;">🕐 じかんを決める</button>' +
+        '  <button type="button" class="hiroba-btn hiroba-btn--pink promise-decline-btn" data-promise-id="' + p.id + '" style="min-height:44px; font-size:16px; flex:1;">🙅 今回はむずかしい</button>' +
+        '</div>' +
+        '<div class="promise-adjust-form" data-promise-id="' + p.id + '" style="display:none; margin-top:10px; gap:8px; align-items:center;">' +
+        '  <input type="time" class="adjust-start-input" style="font-size:16px; padding:6px;"> 〜 ' +
+        '  <input type="time" class="adjust-end-input" style="font-size:16px; padding:6px;">' +
+        '  <button type="button" class="hiroba-btn hiroba-btn--orange promise-adjust-submit-btn" data-promise-id="' + p.id + '" style="min-height:40px; font-size:15px;">送信</button>' +
+        '</div>';
+    } else if (p.status === "approved") {
+      actionsHtml =
+        '<button type="button" class="hiroba-btn hiroba-btn--pink promise-cancel-btn" data-promise-id="' + p.id + '" style="min-height:44px; font-size:16px; margin-top:10px;">きょうは むずかしくなった（キャンセル）</button>';
+    }
+
+    return (
+      '<div style="border:1px solid #eee; border-radius:12px; padding:14px; margin-bottom:12px;">' +
+      '  <div style="font-weight:700;">' + Hiroba.escapeHtml(p.sender_kid_name || "") + ' さん ＆ ' + Hiroba.escapeHtml(p.receiver_kid_name || "") + ' さん</div>' +
+      (detailBits.length ? '  <div style="color:#888; font-size:14px; margin-top:4px;">' + Hiroba.escapeHtml(detailBits.join(" / ")) + '</div>' : "") +
+      audioHtml +
+      '  <div style="margin-top:6px; font-size:14px;">状態: <strong>' + (STATUS_LABELS[p.status] || p.status) + '</strong></div>' +
+      '  <div style="color:#888; font-size:13px;">' + formatApprovalState(p) + '</div>' +
+      actionsHtml +
+      '</div>'
+    );
+  }
+
+  function attachHandlers(list) {
+    list.querySelectorAll(".promise-approve-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () { respond(btn.dataset.promiseId, "approve"); });
+    });
+    list.querySelectorAll(".promise-decline-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () { respond(btn.dataset.promiseId, "decline"); });
+    });
+    list.querySelectorAll(".promise-cancel-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () { cancelPromise(btn.dataset.promiseId); });
+    });
+    list.querySelectorAll(".promise-adjust-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var form = list.querySelector('.promise-adjust-form[data-promise-id="' + btn.dataset.promiseId + '"]');
+        if (form) form.style.display = form.style.display === "none" ? "flex" : "none";
+      });
+    });
+    list.querySelectorAll(".promise-adjust-submit-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var form = btn.closest(".promise-adjust-form");
+        var start = form.querySelector(".adjust-start-input").value;
+        var end = form.querySelector(".adjust-end-input").value;
+        if (!start || !end) {
+          alert("開始・終了時間を選んでください");
+          return;
+        }
+        respond(btn.dataset.promiseId, "adjust_time", start, end);
+      });
+    });
+  }
+
+  async function respond(promiseId, decision, startTime, endTime) {
+    try {
+      var fd = new FormData();
+      fd.append("decision", decision);
+      if (startTime) fd.append("start_time", startTime);
+      if (endTime) fd.append("end_time", endTime);
+      await Hiroba.api("/api/promises/" + promiseId + "/parent-response", { method: "POST", body: fd });
+      loadPromises();
+    } catch (e) {
+      alert(e.message || "処理に失敗しました");
+    }
+  }
+
+  async function cancelPromise(promiseId) {
+    if (!confirm("この約束をキャンセルしますか？相手のご家庭には角の立たない通知が送られます。")) return;
+    try {
+      await Hiroba.api("/api/promises/" + promiseId + "/cancel", { method: "POST" });
+      loadPromises();
+    } catch (e) {
+      alert(e.message || "処理に失敗しました");
+    }
+  }
+
+  loadPromises();
+})();
+</script>
+{% endblock %}

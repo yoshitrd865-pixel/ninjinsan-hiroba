@@ -8,8 +8,15 @@
 </head>
 <body class="hiroba-parent">
   <div class="hiroba-app">
-    <header class="hiroba-header">
-      <span class="hiroba-logo" style="font-size: 22px;">ひろば（保護者用）</span>
+    <header class="hiroba-header" style="flex-direction:column; gap:4px; align-items:stretch;">
+      <a href="/parent/dashboard" style="text-decoration:none; text-align:center;">
+        <span class="hiroba-logo" style="font-size: 22px;">ひろば（保護者用）</span>
+      </a>
+      {% if active and active != 'dashboard' %}
+      <a href="/parent/dashboard" class="hiroba-parent-back-link" style="justify-content:center; display:flex;">
+        ⬅ おうちの人の部屋トップへ
+      </a>
+      {% endif %}
     </header>
     <main class="hiroba-main">
       {% block content %}{% endblock %}
@@ -19,5 +26,3 @@
   {% block scripts %}{% endblock %}
 </body>
 </html>
-
-

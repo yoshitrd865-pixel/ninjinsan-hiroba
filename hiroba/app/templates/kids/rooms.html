@@ -6,19 +6,21 @@
   <div id="invitation-list"></div>
 </div>
 
-<div class="hiroba-card" style="text-align:center;">
-  <div class="hiroba-section-title" style="justify-content:center;">🏠 わたしのおへや</div>
-  <p style="color:var(--hiroba-text-soft); margin:0 0 16px;">なかよしの おともだちだけの ひみつの おへや！</p>
-  <button type="button" id="create-room-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--orange">
-    <span class="hiroba-btn-icon">➕</span> おへやを つくる！
-  </button>
-</div>
-
 <div class="hiroba-card">
-  <div id="room-list">
+  <div class="hiroba-section-title" style="justify-content:center;">🏠 わたしのおへや</div>
+  <p style="color:var(--hiroba-text-soft); margin:0 0 4px; text-align:center;">なかよしの おともだちだけの ひみつの おへや！</p>
+  <div id="room-list" style="margin-top:14px;">
     <div class="hiroba-loading">よみこみちゅう… 🌀</div>
   </div>
 </div>
+
+<div class="hiroba-room-limit-note" id="room-limit-note"></div>
+
+<button type="button" id="create-room-btn" class="hiroba-btn hiroba-btn--xl hiroba-btn--orange hiroba-submit-btn">
+  <span class="hiroba-btn-icon">➕</span> おへやを つくる
+</button>
+<div id="room-limit-error" class="hiroba-auth-error"></div>
+
 
 <!-- おへや作成モーダル -->
 <div id="create-room-modal" class="hiroba-modal-overlay" style="display:none;">
@@ -68,6 +70,14 @@
   var selectedIcon = ROOM_ICONS[0];
   var currentInviteRoomId = null;
   var currentDisbandRoomId = null;
+  var MAX_ROOMS = 5;
+  var ownedRoomCount = 0;
+
+  function updateLimitNote() {
+    var note = document.getElementById("room-limit-note");
+    note.textContent = "（さいだい " + MAX_ROOMS + "つまで つくれるよ）";
+  }
+
 
   /* -------------------- おさそい一覧 -------------------- */
   async function loadInvitations() {
@@ -136,23 +146,34 @@
     try {
       var data = await Hiroba.api("/api/rooms/my-rooms");
       var rooms = (data && data.rooms) || [];
+      MAX_ROOMS = data.max_rooms || MAX_ROOMS;
+      ownedRoomCount = data.owned_room_count || 0;
+      updateLimitNote();
+
       if (rooms.length === 0) {
         list.innerHTML =
           '<div class="hiroba-empty-state">' +
           '  <span class="emoji">🏠</span>' +
-          '  まだ おへやが ないよ！<br>「おへやを つくる！」から はじめてみよう。' +
+          '  まだ おへやが ないよ！<br>「おへやを つくる」から はじめてみよう。' +
           '</div>';
         return;
       }
       list.innerHTML = rooms.map(renderRoomCard).join("");
       list.querySelectorAll("[data-invite-room-id]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (evt) {
+          evt.stopPropagation();
           openInviteModal(parseInt(btn.getAttribute("data-invite-room-id"), 10));
         });
       });
       list.querySelectorAll("[data-disband-room-id]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
+        btn.addEventListener("click", function (evt) {
+          evt.stopPropagation();
           openDisbandModal(parseInt(btn.getAttribute("data-disband-room-id"), 10));
+        });
+      });
+      list.querySelectorAll("[data-room-id]").forEach(function (card) {
+        card.addEventListener("click", function () {
+          window.location.href = "/kids/rooms/" + card.getAttribute("data-room-id");
         });
       });
     } catch (e) {
@@ -172,7 +193,7 @@
         '<button type="button" class="hiroba-tool-btn hiroba-tool-btn--danger" data-disband-room-id="' + room.id + '" aria-label="おへやをたたむ">📦</button>';
     }
     return (
-      '<div class="hiroba-card hiroba-fade-in" data-room-id="' + room.id + '" style="padding:18px; margin-bottom:14px; display:flex; align-items:center; gap:14px;">' +
+      '<div class="hiroba-card hiroba-fade-in" data-room-id="' + room.id + '" style="padding:18px; margin-bottom:14px; display:flex; align-items:center; gap:14px; cursor:pointer;">' +
       '  <div class="hiroba-post-avatar" style="width:64px; height:64px; font-size:34px;">' + (room.icon || "🏠") + '</div>' +
       '  <div style="flex:1; font-size:20px; font-weight:800;">' + Hiroba.escapeHtml(room.name) + '</div>' +
       '  <button type="button" class="hiroba-tool-btn" data-invite-room-id="' + room.id + '">💌 しょうたい</button>' +
@@ -180,6 +201,7 @@
       '</div>'
     );
   }
+
 
   /* -------------------- おへや作成 -------------------- */
   var createModal = document.getElementById("create-room-modal");
@@ -203,9 +225,16 @@
   }
 
   document.getElementById("create-room-btn").addEventListener("click", function () {
+    var limitError = document.getElementById("room-limit-error");
+    if (ownedRoomCount >= MAX_ROOMS) {
+      limitError.textContent = "おへやは さいだい " + MAX_ROOMS + "つまで つくれるよ！";
+      return;
+    }
+    limitError.textContent = "";
     document.getElementById("create-room-error").textContent = "";
     createModal.style.display = "flex";
   });
+
   document.getElementById("create-room-cancel-btn").addEventListener("click", function () {
     createModal.style.display = "none";
   });
