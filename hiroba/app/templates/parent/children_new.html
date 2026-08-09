@@ -4,19 +4,27 @@
 <div class="hiroba-card">
   <h2 style="margin-top:0; font-size:18px;">➕ キッズアカウントを追加</h2>
   <p style="color: var(--hiroba-text-soft); font-size:14px;">
-    お子さまのプロフィールを追加します。おなまえとアイコンを選んでください。
+    お子さまのプロフィールを追加します。おなまえ（ひらがな）・アイコン・がくねんを選んでください。
   </p>
 
   <div style="margin-top:18px; display:flex; flex-direction:column; gap:14px;">
-    <input id="kid-name-input" class="hiroba-auth-input" type="text" placeholder="なまえ（たろう など）">
+    <input id="kid-name-input" class="hiroba-auth-input" type="text" placeholder="なまえ（たろう など。ひらがなでOK）">
 
-    <div class="hiroba-emoji-grid" id="emoji-grid"></div>
+    <div>
+      <div style="font-size:13px; color:var(--hiroba-text-soft); margin-bottom:6px;">アイコン</div>
+      <div class="hiroba-emoji-grid" id="emoji-grid"></div>
+    </div>
+
+    <div>
+      <div style="font-size:13px; color:var(--hiroba-text-soft); margin-bottom:6px;">がくねん（にんい）</div>
+      <div class="hiroba-emoji-grid" id="grade-grid" style="flex-wrap:wrap;"></div>
+    </div>
 
     <div id="add-kid-error" class="hiroba-auth-error"></div>
     <div id="add-kid-success" style="text-align:center; color:var(--hiroba-green); font-weight:700; min-height:1.4em;"></div>
 
     <button id="add-kid-submit-btn" class="hiroba-btn hiroba-btn--orange">ついかする</button>
-    <a href="/parent/dashboard" class="hiroba-btn hiroba-btn--pink" style="text-decoration:none;">やめる</a>
+    <a href="/parent/children" class="hiroba-btn hiroba-btn--pink" style="text-decoration:none;">やめる</a>
   </div>
 </div>
 
@@ -32,7 +40,9 @@
 <script>
 (function () {
   var AVATAR_EMOJIS = ["🐱", "🐶", "🐰", "🦊", "🐻", "🐼", "🦁", "🐸", "🐵", "🐨", "🐯", "🦄"];
+  var GRADE_OPTIONS = ["年少", "年中", "年長", "小1", "小2", "小3", "小4", "小5", "小6", "中1", "中2", "中3"];
   var selectedEmoji = AVATAR_EMOJIS[0];
+  var selectedGrade = "";
 
   function buildEmojiGrid() {
     var grid = document.getElementById("emoji-grid");
@@ -53,6 +63,28 @@
     });
   }
 
+  function buildGradeGrid() {
+    var grid = document.getElementById("grade-grid");
+    grid.innerHTML = "";
+    GRADE_OPTIONS.forEach(function (grade) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "hiroba-emoji-choice";
+      b.style.fontSize = "15px";
+      b.style.width = "auto";
+      b.style.padding = "0 14px";
+      b.textContent = grade;
+      b.addEventListener("click", function () {
+        selectedGrade = (selectedGrade === grade) ? "" : grade;
+        grid.querySelectorAll(".hiroba-emoji-choice").forEach(function (el) {
+          el.classList.remove("is-selected");
+        });
+        if (selectedGrade) b.classList.add("is-selected");
+      });
+      grid.appendChild(b);
+    });
+  }
+
   async function loadKids() {
     var list = document.getElementById("kid-list");
     try {
@@ -68,7 +100,10 @@
         return (
           '<div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #eee;">' +
           '  <div class="hiroba-post-avatar" style="width:44px; height:44px; font-size:24px;">' + (kid.avatar_icon || "🧒") + '</div>' +
-          '  <div style="font-weight:700;">' + kid.display_name + '</div>' +
+          '  <div style="flex:1;">' +
+          '    <div style="font-weight:700;">' + kid.display_name + '</div>' +
+          '    <div style="font-size:12px; color:var(--hiroba-text-soft);">' + (kid.grade || "がくねん未設定") + '</div>' +
+          '  </div>' +
           '</div>'
         );
       }).join("");
@@ -93,6 +128,7 @@
       var fd = new FormData();
       fd.append("display_name", name);
       fd.append("avatar_icon", selectedEmoji);
+      fd.append("grade", selectedGrade);
       var res = await fetch("/api/auth/kids/add", { method: "POST", body: fd });
       var data = await res.json();
       if (!res.ok) throw new Error((data && data.detail) || "ついかに しっぱいしました");
@@ -107,6 +143,7 @@
   });
 
   buildEmojiGrid();
+  buildGradeGrid();
   loadKids();
 })();
 </script>

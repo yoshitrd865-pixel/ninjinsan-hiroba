@@ -35,6 +35,8 @@ from app.routers import reactions as reactions_router
 from app.routers import promises as promises_router
 from app.routers import rooms as rooms_router
 from app.routers import room_content as room_content_router
+from app.routers import parent_settings as parent_settings_router
+
 
 
 SECRET_KEY = os.environ.get("HIROBA_SECRET_KEY", "hiroba-dev-secret-key-change-me")
@@ -74,6 +76,8 @@ app.include_router(reactions_router.router)
 app.include_router(promises_router.router)
 app.include_router(rooms_router.router)
 app.include_router(room_content_router.router)
+app.include_router(parent_settings_router.router)
+
 
 
 @app.on_event("startup")
@@ -239,6 +243,17 @@ async def parent_notifications_page(request: Request):
     return templates.TemplateResponse("parent/notifications.html", context)
 
 
+@app.get("/parent/children", response_class=HTMLResponse)
+async def parent_children_page(request: Request):
+    """キッズアカウントの一覧・編集（名前・アイコン・学年の変更）"""
+    context = {
+        "request": request,
+        "app_name": "ひろば",
+        "active": "children",
+    }
+    return templates.TemplateResponse("parent/children.html", context)
+
+
 @app.get("/parent/children/new", response_class=HTMLResponse)
 async def parent_children_new_page(request: Request):
     """キッズアカウントの追加"""
@@ -248,6 +263,7 @@ async def parent_children_new_page(request: Request):
         "active": "children_new",
     }
     return templates.TemplateResponse("parent/children_new.html", context)
+
 
 
 # ------------------------------------------------------------------

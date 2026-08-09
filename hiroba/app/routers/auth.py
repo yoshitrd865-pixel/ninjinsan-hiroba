@@ -22,6 +22,7 @@ from app.auth import (
 )
 from app.database import get_db
 from app.models import User
+from app.models.user import GRADE_OPTIONS
 from app.services.sms_service import send_verification_code, verify_code
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -34,13 +35,25 @@ def _normalize_phone(phone_number: str) -> str:
     return phone_number
 
 
+def _validate_grade(grade: str) -> str | None:
+    """学年選択のタップ入力を検証する（未選択は None を許容する）"""
+    grade = (grade or "").strip()
+    if not grade:
+        return None
+    if grade not in GRADE_OPTIONS:
+        raise HTTPException(status_code=400, detail="がくねんを えらんでね")
+    return grade
+
+
 def _serialize_kid(kid: User) -> dict:
     return {
         "id": kid.id,
         "display_name": kid.display_name,
         "avatar_icon": kid.avatar_icon,
+        "grade": kid.grade,
         "has_pin": bool(kid.pin_code),
     }
+
 
 
 # ------------------------------------------------------------------
@@ -135,11 +148,18 @@ async def list_kids(
 async def add_kid(
     display_name: str = Form(...),
     avatar_icon: str = Form(""),
+    grade: str = Form(""),
     pin_code: str = Form(""),
     parent: User | None = Depends(get_current_parent),
     db: Session = Depends(get_db),
 ):
-    """保護者がキッズアカウントを追加する（例:「たろう」「はなこ」）"""
+    """保護者がキッズアカウントを追加する（例:「たろう」「はなこ」）
+
+    - display_name : ひらがな等でのお名前（必須）
+    - avatar_icon  : アイコン（絵文字/イラストのキー。任意）
+    - grade        : 学年（GRADE_OPTIONS からのタップ選択。任意）
+    - pin_code     : キッズ選択時に使う4桁PIN（任意）
+    """
     if parent is None:
         raise HTTPException(status_code=401, detail="保護者としてログインしてください")
 
@@ -152,10 +172,13 @@ async def add_kid(
             status_code=400, detail="PINコードは4桁の数字で入力してください"
         )
 
+    grade_value = _validate_grade(grade)
+
     kid = User(
         role="kids",
         display_name=display_name,
         avatar_icon=avatar_icon or None,
+        grade=grade_value,
         pin_code=pin_code or None,
         parent_id=parent.id,
     )
@@ -164,6 +187,52 @@ async def add_kid(
     db.refresh(kid)
 
     return JSONResponse({"success": True, "kid": _serialize_kid(kid)})
+
+
+@router.post("/kids/{kid_id}/update")
+async def update_kid(
+    kid_id: int,
+    display_name: str = Form(...),
+    avatar_icon: str = Form(""),
+    grade: str = Form(""),
+    pin_code: str = Form(""),
+    parent: User | None = Depends(get_current_parent),
+    db: Session = Depends(get_db),
+):
+    """保護者が既存のキッズアカウント（名前・アイコン・学年・PIN）を編集する
+
+    ログイン中の保護者自身に紐づくキッズのみ編集できる（アクセス制御）。
+    """
+    if parent is None:
+        raise HTTPException(status_code=401, detail="保護者としてログインしてください")
+
+    kid = (
+        db.query(User)
+        .filter(User.id == kid_id, User.role == "kids", User.parent_id == parent.id)
+        .first()
+    )
+    if kid is None:
+        raise HTTPException(status_code=404, detail="キッズアカウントが見つかりません")
+
+    display_name = display_name.strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="お名前を入力してください")
+
+    if pin_code and (len(pin_code) != 4 or not pin_code.isdigit()):
+        raise HTTPException(
+            status_code=400, detail="PINコードは4桁の数字で入力してください"
+        )
+
+    kid.display_name = display_name
+    kid.avatar_icon = avatar_icon or None
+    kid.grade = _validate_grade(grade)
+    kid.pin_code = pin_code or None
+
+    db.commit()
+    db.refresh(kid)
+
+    return JSONResponse({"success": True, "kid": _serialize_kid(kid)})
+
 
 
 @router.post("/kids/{kid_id}/select")

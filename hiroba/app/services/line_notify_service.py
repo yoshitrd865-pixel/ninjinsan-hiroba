@@ -28,9 +28,19 @@ def notify_parent(parent, message: str) -> None:
     - parent  : 通知先の保護者 User（None なら何もしない）
     - message : 送信するメッセージ本文（日付・時間帯・場所・相手キッズ名など
                 キッズ向け情報のみを含み、どちらの親が断ったか等の理由は含めない）
+
+    保護者が /parent/notifications でLINE通知をOFFにしている場合は、
+    実際には送信しない（履歴にも残さない）。
     """
     if parent is None:
         return
+    if getattr(parent, "line_notify_enabled", True) is False:
+        logger.info(
+            "[開発モードLINE] parent_id=%s は通知OFFのため送信をスキップしました",
+            getattr(parent, "id", None),
+        )
+        return
+
 
     entry = {"parent_id": getattr(parent, "id", None), "message": message}
     sent_messages.append(entry)

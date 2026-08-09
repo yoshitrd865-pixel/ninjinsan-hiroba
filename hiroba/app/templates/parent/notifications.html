@@ -2,37 +2,25 @@
 
 {% block content %}
 <div class="hiroba-card">
-  <h2 style="margin-top:0; font-size:18px;">🔔 アプリの通知設定</h2>
+  <h2 style="margin-top:0; font-size:18px;">🔔 LINE通知設定</h2>
   <p style="color: var(--hiroba-text-soft); font-size:14px;">
-    お子さまの「おへや」への参加希望や、「遊ぶ約束」の提案があったときに、
-    LINE通知でお知らせするタイミングを設定できます。
+    お子さまの「おへや」への参加希望や、「遊ぶ約束」の提案・成立・キャンセルがあったときに、
+    LINEでお知らせします。
   </p>
 
-  <div id="notification-settings" style="display:flex; flex-direction:column; gap:14px; margin-top:16px;">
-    <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer;">
-      <input type="checkbox" id="notify-room-invite" style="width:22px; height:22px;">
-      <span style="flex:1;">
-        <strong style="display:block; font-size:15px;">おへやの参加リクエスト</strong>
-        <span style="font-size:13px; color:var(--hiroba-text-soft);">お子さまが「おへや」への参加を希望したときに通知</span>
-      </span>
-    </label>
-
-    <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer;">
-      <input type="checkbox" id="notify-promise" style="width:22px; height:22px;">
-      <span style="flex:1;">
-        <strong style="display:block; font-size:15px;">遊ぶ約束の提案</strong>
-        <span style="font-size:13px; color:var(--hiroba-text-soft);">「遊ぶ約束」の新しい提案があったときに通知</span>
-      </span>
-    </label>
-
-    <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer;">
-      <input type="checkbox" id="notify-daily-summary" style="width:22px; height:22px;">
-      <span style="flex:1;">
-        <strong style="display:block; font-size:15px;">1日のまとめ通知</strong>
-        <span style="font-size:13px; color:var(--hiroba-text-soft);">お子さまの投稿・活動を1日1回まとめて通知</span>
-      </span>
-    </label>
+  <div id="line-link-status" style="margin-top:12px; padding:14px 16px; border-radius:16px; background:var(--hiroba-bg);">
+    <div class="hiroba-loading">よみこみちゅう…</div>
   </div>
+
+  <label style="display:flex; align-items:center; gap:14px; background:var(--hiroba-bg); border-radius:16px; padding:14px 16px; cursor:pointer; margin-top:14px;">
+    <input type="checkbox" id="notify-toggle" style="width:22px; height:22px;">
+    <span style="flex:1;">
+      <strong style="display:block; font-size:15px;">LINE通知を受け取る</strong>
+      <span style="font-size:13px; color:var(--hiroba-text-soft);">
+        おへや参加リクエスト・遊ぶ約束の提案・成立・キャンセルの通知をLINEで受け取ります
+      </span>
+    </span>
+  </label>
 
   <div id="notification-saved-note" style="text-align:center; color: var(--hiroba-green); font-weight:700; min-height:1.4em; margin-top:14px;"></div>
 </div>
@@ -41,39 +29,86 @@
 {% block scripts %}
 <script>
 (function () {
-  var STORAGE_KEY = "hiroba_notification_settings";
-  var checkboxes = {
-    notify_room_invite: document.getElementById("notify-room-invite"),
-    notify_promise: document.getElementById("notify-promise"),
-    notify_daily_summary: document.getElementById("notify-daily-summary")
-  };
+  var toggle = document.getElementById("notify-toggle");
+  var statusEl = document.getElementById("line-link-status");
+  var noteEl = document.getElementById("notification-saved-note");
 
-  function loadSettings() {
-    var saved = {};
-    try {
-      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    } catch (e) {
-      saved = {};
+  function renderStatus(settings) {
+    if (settings.line_linked) {
+      statusEl.innerHTML =
+        '<div style="font-weight:700; color:var(--hiroba-green);">✅ LINE連携ずみ</div>' +
+        '<div style="font-size:13px; color:var(--hiroba-text-soft); margin-top:4px;">ID: ' + (settings.line_user_id_masked || "") + '</div>' +
+        '<button type="button" id="line-unlink-btn" class="hiroba-btn hiroba-btn--pink" style="margin-top:10px; min-height:40px; font-size:14px;">連携を解除する</button>';
+      var unlinkBtn = document.getElementById("line-unlink-btn");
+      if (unlinkBtn) unlinkBtn.addEventListener("click", unlinkLine);
+    } else {
+      statusEl.innerHTML =
+        '<div style="font-weight:700; color:var(--hiroba-text-soft);">⚠️ LINE未連携です</div>' +
+        '<div style="font-size:13px; color:var(--hiroba-text-soft); margin-top:4px;">連携すると、通知をLINEで受け取れます</div>' +
+        '<button type="button" id="line-link-btn" class="hiroba-btn hiroba-btn--green" style="margin-top:10px; min-height:40px; font-size:14px;">LINEと連携する</button>';
+      var linkBtn = document.getElementById("line-link-btn");
+      if (linkBtn) linkBtn.addEventListener("click", linkLine);
     }
-    Object.keys(checkboxes).forEach(function (key) {
-      checkboxes[key].checked = saved[key] !== undefined ? !!saved[key] : true;
-    });
+    toggle.checked = !!settings.line_notify_enabled;
   }
 
-  function saveSettings() {
-    var data = {};
-    Object.keys(checkboxes).forEach(function (key) {
-      data[key] = checkboxes[key].checked;
-    });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-
-    var note = document.getElementById("notification-saved-note");
-    note.textContent = "✅ 設定を保存しました";
-    setTimeout(function () { note.textContent = ""; }, 2000);
+  async function loadSettings() {
+    try {
+      var res = await fetch("/api/parent/notifications");
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "取得に失敗しました");
+      renderStatus(data.settings);
+    } catch (e) {
+      if (e && e.message && e.message.indexOf("ログイン") !== -1) {
+        window.location.href = "/login";
+        return;
+      }
+      statusEl.innerHTML = "<p>読み込みに失敗しました。</p>";
+    }
   }
 
-  Object.keys(checkboxes).forEach(function (key) {
-    checkboxes[key].addEventListener("change", saveSettings);
+  async function linkLine() {
+    try {
+      var res = await fetch("/api/parent/notifications/link", { method: "POST" });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "連携に失敗しました");
+      renderStatus(data.settings);
+      showSaved("✅ LINEと連携しました");
+    } catch (e) {
+      alert(e.message || "連携に失敗しました");
+    }
+  }
+
+  async function unlinkLine() {
+    if (!confirm("LINE連携を解除しますか？")) return;
+    try {
+      var res = await fetch("/api/parent/notifications/unlink", { method: "POST" });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "解除に失敗しました");
+      renderStatus(data.settings);
+      showSaved("連携を解除しました");
+    } catch (e) {
+      alert(e.message || "解除に失敗しました");
+    }
+  }
+
+  function showSaved(msg) {
+    noteEl.textContent = msg;
+    setTimeout(function () { noteEl.textContent = ""; }, 2000);
+  }
+
+  toggle.addEventListener("change", async function () {
+    try {
+      var fd = new FormData();
+      fd.append("enabled", toggle.checked ? "true" : "false");
+      var res = await fetch("/api/parent/notifications/toggle", { method: "POST", body: fd });
+      var data = await res.json();
+      if (!res.ok) throw new Error((data && data.detail) || "保存に失敗しました");
+      showSaved("✅ 設定を保存しました");
+    } catch (e) {
+      alert(e.message || "保存に失敗しました");
+      loadSettings();
+    }
   });
 
   loadSettings();
