@@ -185,7 +185,7 @@ window.Hiroba = (function () {
 
     playFunnySound(count);
 
-    if (count >= 300) {
+    if (count === 300) {
       triggerExplosion(btn, postId, reactionType);
       return true;
     }
