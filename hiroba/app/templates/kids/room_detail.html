@@ -235,6 +235,11 @@
     var card = btn.closest(".hiroba-post-card");
     var postId = card.getAttribute("data-post-id");
     var reactionType = btn.getAttribute("data-reaction-type");
+
+    if (Hiroba.checkExplosionAndSound(btn, postId, reactionType)) {
+      return;
+    }
+
     Hiroba.bounce(btn);
     var countEl = btn.querySelector(".count");
     countEl.textContent = parseInt(countEl.textContent || "0", 10) + 1;

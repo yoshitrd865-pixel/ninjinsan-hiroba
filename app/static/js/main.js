@@ -765,7 +765,136 @@
     const list = qs("#global-timeline-list");
     if (!list) return; // このページでなければ何もしない
 
+    // Web Audio APIを用いた面白い音の生成
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          audioCtx = new AudioContext();
+        }
+      }
+      if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    // ランダムに面白い音（ピコピコ、ポヨヨン、ボンッ等）を鳴らす
+    function playFunnySound(clickCount) {
+      const ctx = getAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (clickCount >= 300) {
+        // 爆発音 (ホワイトノイズバースト＋低音グロウル)
+        const bufferSize = ctx.sampleRate * 0.8;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(1.0, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        noise.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noise.start(now);
+        noise.stop(now + 0.8);
+
+        // 爆発の低音ズシーン
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.8);
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        osc.start(now);
+        osc.stop(now + 0.8);
+        return;
+      }
+
+      // 通常の面白いクリック音（段階や回数に応じて変化）
+      const soundType = clickCount % 5;
+      if (soundType === 0) {
+        // ピコーン（高音スライド）
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(400 + (clickCount % 600), now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.15);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (soundType === 1) {
+        // ポヨヨン（周波数上下）
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.1);
+        osc.frequency.linearRampToValueAtTime(250, now + 0.25);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (soundType === 2) {
+        // ププッ（矩形波）
+        osc.type = "square";
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.setValueAtTime(440, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (soundType === 3) {
+        // キラリーン（高音アルペジオ風）
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(1100, now + 0.05);
+        osc.frequency.setValueAtTime(1320, now + 0.1);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else {
+        // ボコッ（低めのポップ音）
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+    }
+
+    // 投稿ID×リアクション種別ごとのクリック回数を保持
+    const clickCounts = {};
+
     async function react(postId, reactionType, btn) {
+      const key = postId + "_" + reactionType;
+      if (!clickCounts[key]) {
+        clickCounts[key] = 0;
+      }
+      clickCounts[key]++;
+      const currentCount = clickCounts[key];
+
+      // 面白い音を鳴らす
+      playFunnySound(currentCount);
+
+      // 300回に達したとき：爆発アニメーション＆ボタン破壊
+      if (currentCount >= 300) {
+        triggerExplosion(btn);
+        return;
+      }
+
+      // 通常のサーバー連携＋アニメーション演出
+      animateButtonBounce(btn, currentCount);
+
       try {
         const result = await postForm(
           "/api/posts/" + postId + "/react",
@@ -778,12 +907,83 @@
             reactionType === "warm" ? result.warm_count : result.cheer_count;
         }
       } catch (e) {
-        // 通信エラー時は静かに無視（シニア向けUIでは余計なエラー表示を避ける）
+        // 通信エラー時は静かに無視
       }
+    }
+
+    function animateButtonBounce(btn, count) {
+      btn.style.transform = "scale(1.15) rotate(" + ((count % 2 === 0 ? 1 : -1) * 6) + "deg)";
+      setTimeout(function() {
+        btn.style.transform = "scale(1) rotate(0deg)";
+      }, 100);
+    }
+
+    function triggerExplosion(btn) {
+      btn.disabled = true;
+      btn.classList.add("reaction-btn--exploded");
+
+      // 爆発パーティクルを生成
+      const rect = btn.getBoundingClientRect();
+      const container = document.createElement("div");
+      container.className = "explosion-container";
+      container.style.position = "fixed";
+      container.style.left = (rect.left + rect.width / 2) + "px";
+      container.style.top = (rect.top + rect.height / 2) + "px";
+      container.style.zIndex = "9999";
+      container.style.pointerEvents = "none";
+      document.body.appendChild(container);
+
+      // 派手な破片や絵文字を放射状に飛ばす
+      const emojis = ["💥", "✨", "🔥", "🌸", "📣", "💫", "💨", "⭐"];
+      for (let i = 0; i < 30; i++) {
+        const particle = document.createElement("div");
+        particle.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        particle.style.position = "absolute";
+        particle.style.fontSize = (Math.random() * 24 + 16) + "px";
+        particle.style.transition = "all 0.6s ease-out";
+        container.appendChild(particle);
+
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * 180 + 50;
+        const targetX = Math.cos(angle) * distance;
+        const targetY = Math.sin(angle) * distance;
+
+        requestAnimationFrame(function() {
+          particle.style.transform = "translate(" + targetX + "px, " + targetY + "px) scale(" + (Math.random() + 0.5) + ") rotate(" + (Math.random() * 360) + "deg)";
+          particle.style.opacity = "0";
+        });
+      }
+
+      // ボタンの見た目を「壊れた状態」にする
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<span style="color: #c0392b; font-weight: bold;">💥 ボカーン！ボタンが壊れた！ 💥</span>';
+      btn.style.backgroundColor = "#fadbd8";
+      btn.style.borderColor = "#c0392b";
+      btn.style.cursor = "not-allowed";
+
+      // 1秒後にパーティクル削除 ＆ 6秒後にボタンを復活させる
+      setTimeout(function() {
+        container.remove();
+      }, 1000);
+
+      setTimeout(function() {
+        btn.innerHTML = originalHTML;
+        btn.style.backgroundColor = "";
+        btn.style.borderColor = "";
+        btn.style.cursor = "pointer";
+        btn.disabled = false;
+        // カウントリセット
+        const postId = btn.dataset.postId;
+        const reactionType = btn.dataset.reactionType;
+        if (postId && reactionType) {
+          clickCounts[postId + "_" + reactionType] = 0;
+        }
+      }, 6000);
     }
 
     qsa(".reaction-btn", list).forEach(function (btn) {
       btn.addEventListener("click", function () {
+        if (btn.disabled) return;
         const postId = btn.dataset.postId;
         const reactionType = btn.dataset.reactionType;
         if (!postId || !reactionType) return;

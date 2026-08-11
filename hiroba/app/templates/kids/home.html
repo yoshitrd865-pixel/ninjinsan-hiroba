@@ -127,6 +127,10 @@
     var postId = card.getAttribute("data-post-id");
     var reactionType = btn.getAttribute("data-reaction-type");
 
+    if (Hiroba.checkExplosionAndSound(btn, postId, reactionType)) {
+      return;
+    }
+
     Hiroba.bounce(btn);
     var countEl = btn.querySelector(".count");
     var current = parseInt(countEl.textContent || "0", 10);
