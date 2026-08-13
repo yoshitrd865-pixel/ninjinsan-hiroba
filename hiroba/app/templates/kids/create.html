@@ -375,6 +375,9 @@
         fd.append("audio", audioBlob, "voice." + ext);
       }
 
+      if (!window.Hiroba) {
+        throw new Error("ひろばシステムがみつかりません");
+      }
       await Hiroba.api("/api/posts/create", { method: "POST", body: fd });
       window.location.href = "/kids/home";
     } catch (e) {
@@ -388,7 +391,9 @@
     }
   });
 
-  Hiroba.requireLogin();
+  if (window.Hiroba && typeof window.Hiroba.requireLogin === "function") {
+    Hiroba.requireLogin();
+  }
 })();
 </script>
 {% endblock %}
