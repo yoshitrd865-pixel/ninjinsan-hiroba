@@ -108,18 +108,20 @@ async def select_kid_page(request: Request):
 # ------------------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    """アプリの最初のページ（トップ画面）
-
-    「おへや（おともだちとつかうところ）」と
-    「おうちの人の部屋（おうちの人がみるところ）」の
-    2つの巨大カードボタンを表示する。
-    """
-    context = {
-        "request": request,
-        "active": None,
-        "app_name": "ひろば",
-    }
-    return templates.TemplateResponse("kids/top.html", context)
+    """ルートURLへのアクセスは直接保護者ログイン画面へリダイレクトする"""
+    return RedirectResponse(url="/login", status_code=303)
+    # """アプリの最初のページ（トップ画面）
+    #
+    # 「おへや（おともだちとつかうところ）」と
+    # 「おうちの人の部屋（おうちの人がみるところ）」の
+    # 2つの巨大カードボタンを表示する。
+    # """
+    # context = {
+    #     "request": request,
+    #     "active": None,
+    #     "app_name": "ひろば",
+    # }
+    # return templates.TemplateResponse("kids/top.html", context)
 
 
 @app.get("/kids/home", response_class=HTMLResponse)
